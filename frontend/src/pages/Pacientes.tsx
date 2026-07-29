@@ -3,7 +3,7 @@ import { Plus, Search, Edit, Trash2, Mail, Phone, MapPin, IdCard, ChevronDown, C
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
-import { CalendarPicker, formatDateString, normalizeDateString } from "@/components/ui/apple-calendar-picker";
+import { CalendarPicker, formatDateString, normalizeDateString, parseDateString } from "@/components/ui/apple-calendar-picker";
 import { getPacientes, createPaciente, updatePaciente, buscarPacientes, deleteUser } from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -261,7 +261,7 @@ export default function Pacientes() {
               <div>
                 <label className="block text-sm text-gray-500 dark:text-white/40 mb-1">Fecha de nacimiento</label>
                 <CalendarPicker
-                  value={form.fecha_nacimiento ? (() => { const [y,m,d] = form.fecha_nacimiento.split("-").map(Number); return new Date(y,m-1,d); })() : null}
+                  value={parseDateString(form.fecha_nacimiento)}
                   onChange={(date) => setForm({ ...form, fecha_nacimiento: formatDateString(date) })}
                   placeholder="Seleccionar fecha"
                 />

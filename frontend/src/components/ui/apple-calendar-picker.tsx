@@ -24,6 +24,15 @@ export function formatDateString(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
+export function parseDateString(str: string | null | undefined): Date | null {
+  if (!str) return null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    const [y, m, d] = str.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return null;
+}
+
 function cn(...classes: (string | false | undefined | null)[]) {
   return classes.filter(Boolean).join(" ");
 }
@@ -126,21 +135,21 @@ export function CalendarPicker({
       const selected = d === selDay && month === selMonth && year === selYear;
       const disabled = isPast(year, month, d);
       days.push(
-        <button
-          key={d}
-          disabled={disabled}
-          onClick={() => handleDay(d)}
-          className={cn(
-            "w-[46px] h-[46px] text-[17px] font-medium rounded-full flex items-center justify-center transition-all select-none",
-            selected
-              ? "bg-primary text-white font-semibold"
-              : disabled
-                ? "text-muted-foreground/30 dark:text-white/15 cursor-default"
-                : "text-foreground dark:text-white hover:bg-primary/10 active:bg-primary/20"
-          )}
-        >
-          {d}
-        </button>
+          <button type="button"
+            key={d}
+            disabled={disabled}
+            onClick={() => handleDay(d)}
+            className={cn(
+              "w-[46px] h-[46px] text-[17px] font-medium rounded-full flex items-center justify-center transition-all select-none",
+              selected
+                ? "bg-primary text-white font-semibold"
+                : disabled
+                  ? "text-muted-foreground/30 dark:text-white/15 cursor-default"
+                  : "text-foreground dark:text-white hover:bg-primary/10 active:bg-primary/20"
+            )}
+          >
+            {d}
+          </button>
       );
     }
     return days;
@@ -179,16 +188,16 @@ export function CalendarPicker({
 
       {open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 dark:bg-black/50 backdrop-blur-lg dark:backdrop-blur-xl" onClick={() => { setOpen(false); onClose?.(); }} />
+          <div className="absolute inset-0 bg-black/40 dark:bg-black/50 backdrop-blur-lg" onClick={() => { setOpen(false); onClose?.(); }} />
           <div className="relative w-full max-w-[340px] bg-white dark:bg-[#1C1C1E] border-2 border-gray-200/80 dark:border-white/20 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.25)] dark:shadow-[0_8px_60px_rgba(0,0,0,0.6)] p-5 animate-in fade-in zoom-in-95 duration-200">
             {mode === "months" ? (
               <>
                 <div className="flex items-center justify-between mb-4">
-                  <button onClick={() => setYear(y => y - 1)} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
+                  <button type="button" onClick={() => setYear(y => y - 1)} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
                     <ChevronLeft />
                   </button>
                   <span className="text-base font-semibold text-foreground dark:text-white">{year}</span>
-                  <button onClick={() => setYear(y => y + 1)} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
+                  <button type="button" onClick={() => setYear(y => y + 1)} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
                     <ChevronRight />
                   </button>
                 </div>
@@ -196,7 +205,7 @@ export function CalendarPicker({
                   {MONTHS.map((m, i) => {
                     const isCur = i === month;
                     return (
-                      <button
+                      <button type="button"
                         key={m}
                         onClick={() => { setMonth(i); setMode("days"); }}
                         className={cn(
@@ -213,7 +222,7 @@ export function CalendarPicker({
             ) : (
               <>
                 <div className="flex items-center justify-between mb-4">
-                  <button
+                  <button type="button"
                     onClick={() => setMode("months")}
                     className="flex items-center gap-1 text-base font-semibold text-foreground dark:text-white hover:opacity-75 transition-opacity"
                   >
@@ -223,14 +232,14 @@ export function CalendarPicker({
                     </svg>
                   </button>
                   <div className="flex items-center gap-1">
-                    <button onClick={prevMonth} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors disabled:opacity-20" disabled={!canGoPrev}>
+                    <button type="button" onClick={prevMonth} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors disabled:opacity-20" disabled={!canGoPrev}>
                       <ChevronLeft />
                     </button>
-                    <button onClick={nextMonth} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
+                    <button type="button" onClick={nextMonth} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
                       <ChevronRight />
                     </button>
                   </div>
-                </div>
+                </div> 
 
                 <div className="grid grid-cols-7 gap-y-1 mb-2">
                   {WEEKDAYS.map(d => (

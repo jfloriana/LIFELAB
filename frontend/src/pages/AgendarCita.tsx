@@ -3,7 +3,7 @@ import { Calendar, FileText, Stethoscope, Microscope, Search, Plus, FlaskConical
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { CalendarPicker, formatDateString, normalizeDateString } from "@/components/ui/apple-calendar-picker";
+import { CalendarPicker, formatDateString, normalizeDateString, parseDateString } from "@/components/ui/apple-calendar-picker";
 import { createPaciente, buscarPacientes, createCita } from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -269,7 +269,7 @@ export default function AgendarCita() {
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-white/50">Fecha</label>
                 <CalendarPicker
-                  value={(/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) ? (() => { const [y,m,d] = selectedDate.split("-").map(Number); return new Date(y,m-1,d); })() : null}
+                  value={parseDateString(selectedDate)}
                   onChange={(date) => setSelectedDate(formatDateString(date))}
                   minDate={new Date()}
                 />
@@ -435,7 +435,7 @@ export default function AgendarCita() {
               <div>
                 <label className="block text-sm text-gray-500 dark:text-white/40 mb-1">Fecha de nacimiento</label>
                 <CalendarPicker
-                  value={nuevoPaciente.fecha_nacimiento ? (() => { const [y,m,d] = nuevoPaciente.fecha_nacimiento.split("-").map(Number); return new Date(y,m-1,d); })() : null}
+                  value={parseDateString(nuevoPaciente.fecha_nacimiento)}
                   onChange={(date) => {
                     setNuevoPaciente({ ...nuevoPaciente, fecha_nacimiento: formatDateString(date) });
                   }}
