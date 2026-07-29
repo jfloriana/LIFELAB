@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://lifelab-api.onrender.com/api/$1"
+    }
+  ]
+}
