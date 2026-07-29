@@ -20,6 +20,7 @@ import Resenas from "@/pages/Resenas";
 import Reportes from "@/pages/Reportes";
 import AnalisisPendientes from "@/pages/AnalisisPendientes";
 import MisEnvios from "@/pages/MisEnvios";
+import Compartido from "@/pages/Compartido";
 
 export default function App() {
   return (
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="/compartido/:token" element={<Compartido />} />
 
           <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
             <Route element={<Layout />}>

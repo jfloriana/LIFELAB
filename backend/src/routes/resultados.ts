@@ -232,8 +232,8 @@ router.post("/:id/compartir", validateId(), async (req, res) => {
     "UPDATE resultados SET compartido_token = ?, compartido_expira = NOW() + INTERVAL '7 days' WHERE id = ?",
     [token, req.params!.id]
   );
-  const publicUrl = process.env.PUBLIC_URL || `${req.protocol}://${req.get("host")}`;
-  const shareUrl = `${publicUrl}/compartido/${token}`;
+  const frontendUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get("host")}`;
+  const shareUrl = `${frontendUrl}/compartido/${token}`;
   res.json({ token, url: shareUrl });
 });
 
