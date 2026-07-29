@@ -467,9 +467,8 @@ export default function AgendarCita() {
       <CalendarPicker
         isOpen={showCalFechaNuevo}
         onClose={() => setShowCalFechaNuevo(false)}
-        initialDate={nuevoPaciente.fecha_nacimiento ? (() => { const [y,m,d] = nuevoPaciente.fecha_nacimiento.split("-").map(Number); return new Date(y,m-1,d); })() : undefined}
-        showTime={false}
-        onDateSelect={(date) => {
+        value={nuevoPaciente.fecha_nacimiento ? (() => { const [y,m,d] = nuevoPaciente.fecha_nacimiento.split("-").map(Number); return new Date(y,m-1,d); })() : null}
+        onChange={(date) => {
           setNuevoPaciente({ ...nuevoPaciente, fecha_nacimiento: formatDateString(date) });
           setShowCalFechaNuevo(false);
         }}
@@ -478,8 +477,9 @@ export default function AgendarCita() {
       <CalendarPicker
         isOpen={showCalendar}
         onClose={() => setShowCalendar(false)}
-        initialDate={(/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) ? (() => { const [y,m,d] = selectedDate.split("-").map(Number); return new Date(y,m-1,d); })() : new Date()}
-        onDateSelect={(date) => setSelectedDate(formatDateString(date))}
+        value={(/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) ? (() => { const [y,m,d] = selectedDate.split("-").map(Number); return new Date(y,m-1,d); })() : null}
+        onChange={(date) => setSelectedDate(formatDateString(date))}
+        minDate={new Date()}
       />
     </div>
   );
