@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import dns from "dns";
 
 function escaparHtml(texto: string): string {
   return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -6,7 +7,16 @@ function escaparHtml(texto: string): string {
 
 let transporter: nodemailer.Transporter | null = null;
 
-function getTransporter() {
+async function resolveHost(host: string): Promise<string> {
+  try {
+    const { address } = await dns.promises.lookup(host, { family: 4 });
+    return address;
+  } catch {
+    return host;
+  }
+}
+
+async function getTransporter() {
   if (transporter) return transporter;
 
   const user = process.env.SMTP_USER;
@@ -16,8 +26,12 @@ function getTransporter() {
     return null;
   }
 
+  const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
+  const smtpIp = await resolveHost(smtpHost);
+  console.log(`📧 SMTP conectando a ${smtpHost} (${smtpIp})`);
+
   transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || "smtp.gmail.com",
+    host: smtpIp,
     port: parseInt(process.env.SMTP_PORT || "587"),
     secure: false,
     auth: { user, pass },
@@ -114,7 +128,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string, no
     </html>
   `;
 
-  const t = getTransporter();
+  const t = await getTransporter();
 
   if (t) {
     try {
@@ -225,7 +239,7 @@ export async function sendVerificationEmail(email: string, verifyUrl: string, no
     </html>
   `;
 
-  const t = getTransporter();
+  const t = await getTransporter();
 
   if (t) {
     try {
