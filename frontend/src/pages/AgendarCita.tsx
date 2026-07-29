@@ -9,7 +9,6 @@ import { useToast } from "@/components/ui/use-toast";
 
 const bioanalistas = [
   { id: 1, nombre: "JOSUE HERNANDEZ DAVALOS" },
-  { id: 2, nombre: "Ana López" },
 ];
 
 const analisisCategorias = [
