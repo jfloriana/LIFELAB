@@ -102,6 +102,12 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string, no
     console.log(`✅ Email de recuperación enviado a ${email}`);
   } catch (err) {
     console.error("Error enviando email de recuperación:", err);
+    const maskedUrl = resetUrl.replace(/token=[^&]+/, "token=***");
+    console.log("\n========================================");
+    console.log("🔐 FALLBACK — Link de recuperación");
+    console.log(`   Para: ${email}`);
+    console.log(`   Enlace: ${maskedUrl}`);
+    console.log("========================================\n");
   }
 }
 
@@ -138,5 +144,10 @@ export async function sendVerificationEmail(email: string, verifyUrl: string, no
     console.log(`✅ Email de verificación enviado a ${email}`);
   } catch (err) {
     console.error("Error enviando email de verificación:", err);
+    console.log("\n========================================");
+    console.log("📧 FALLBACK — Link de verificación");
+    console.log(`   Para: ${email}`);
+    console.log(`   Enlace: ${verifyUrl}`);
+    console.log("========================================\n");
   }
 }
