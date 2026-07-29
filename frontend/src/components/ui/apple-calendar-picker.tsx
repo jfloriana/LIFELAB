@@ -170,7 +170,7 @@ export function CalendarPicker({
       </button>
 
       {open && (
-        <div className="absolute top-full mt-2 left-0 sm:left-auto right-0 z-50 w-full sm:w-[340px] bg-card dark:bg-[#1C1C1E] border border-border dark:border-white/10 rounded-2xl shadow-lg dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] p-5 transition-colors duration-200">
+        <div className="absolute top-full mt-2 left-0 sm:left-auto right-0 z-50 w-full bg-card dark:bg-[#1C1C1E] border border-border dark:border-white/10 rounded-2xl shadow-lg dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] p-5 transition-colors duration-200">
           {mode === "months" ? (
             <>
               <div className="flex items-center justify-between mb-4">
