@@ -1,5 +1,5 @@
+import { ThinkingOrb } from "thinking-orbs";
 import { GrainGradient } from "@paper-design/shaders-react";
-import { Activity } from "lucide-react";
 
 export function LoadingScreen() {
   return (
@@ -22,22 +22,20 @@ export function LoadingScreen() {
       <div className="absolute inset-0 bg-gradient-to-br from-background/90 via-background/50 to-background/90" />
 
       <div className="relative z-10 min-h-dvh flex flex-col items-center justify-center px-4">
-        <div className="relative mb-8">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-primary-light shadow-lg shadow-primary/25 flex items-center justify-center">
-            <Activity className="w-10 h-10 text-white animate-pulse" />
-          </div>
-          <div className="absolute -inset-3 rounded-3xl border-2 border-primary/20 animate-ping opacity-50" />
-          <div className="absolute -inset-6 rounded-[2rem] border border-primary/10 animate-ping opacity-30" style={{ animationDelay: "0.3s", animationDuration: "2.5s" }} />
+        <div className="relative mb-10">
+          <ThinkingOrb state="listening" size={72} />
+          <div className="absolute -inset-4 rounded-full bg-primary/10 animate-ping opacity-40" />
+          <div className="absolute -inset-8 rounded-full bg-primary/5 animate-ping opacity-20" style={{ animationDelay: "0.3s", animationDuration: "2.5s" }} />
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0s" }} />
-          <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0.15s" }} />
-          <span className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0.3s" }} />
+        <div className="flex items-center gap-3 mb-3">
+          <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "0s" }} />
+          <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "0.15s" }} />
+          <span className="w-1.5 h-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "0.3s" }} />
         </div>
 
-        <p className="mt-4 text-sm text-text-muted font-medium tracking-wide animate-pulse">
-          CARGANDO
+        <p className="text-sm text-text-muted font-medium tracking-[0.2em] uppercase">
+          <span className="inline-block animate-pulse">Cargando</span>
         </p>
       </div>
     </section>
