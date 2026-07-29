@@ -1,0 +1,26 @@
+# Node
+node_modules/
+
+# Environment (contiene credenciales reales)
+.env
+.env.local
+.env.production
+
+# Build
+dist/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads (archivos de pacientes)
+uploads/
+backend/uploads/
+
+# Reportes generados por la app (contienen datos sensibles)
+reporte-*.pdf

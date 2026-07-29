@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-primary: #0891B2;
+  --color-primary-dark: #066f8a;
+  --color-primary-light: #22D3EE;
+  --color-secondary: #22D3EE;
+  --color-accent: #0891B2;
+  --color-background: #FFFFFF;
+  --color-foreground: #1E293B;
+  --color-surface: #FFFFFF;
+  --color-surface-light: #F4F5F7;
+  --color-border: #E0E4EA;
+  --color-text: #334155;
+  --color-text-muted: #6B7A8F;
+  --color-danger: #DC2626;
+  --color-success: #16A34A;
+  --color-destructive: #DC2626;
+  --color-destructive-foreground: #FEF2F2;
+  --color-warning: #D97706;
+  --color-warning-foreground: #FFFBEB;
+  --color-info: #0891B2;
+  --color-info-foreground: #F0F9FF;
+  --color-success-foreground: #F0FDF4;
+  --color-ring: #0891B2;
+  --font-sans: 'Noto Sans', 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Figtree', 'Noto Sans', sans-serif;
+  --color-gray-50: #F6F7F9;
+  --color-gray-100: #EAECEF;
+  --color-gray-200: #D4D7DD;
+  --color-gray-300: #AFB4BD;
+  --color-gray-400: #7C818C;
+  --color-gray-500: #4E525D;
+  --color-gray-600: #363940;
+  --color-gray-700: #282A30;
+  --color-gray-800: #1A1B1F;
+  --color-gray-900: #0C0D0F;
+}
+
+.dark {
+  --color-primary: #22D3EE;
+  --color-primary-dark: #0891B2;
+  --color-primary-light: #67E8F9;
+  --color-background: #0A0F1A;
+  --color-foreground: #F0FDFA;
+  --color-surface: #111827;
+  --color-surface-light: #1F2937;
+  --color-border: #1E3A3A;
+  --color-text: #F0FDFA;
+  --color-text-muted: #8BB8B8;
+}
+
+html {
+  font-size: 12px;
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: var(--color-background);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
+.glass {
+  background: rgba(17, 24, 39, 0.8);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(55, 65, 81, 0.5);
+}
+
+.dark .glass {
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid rgba(55, 65, 81, 0.5);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #0891B2, #0EA5E9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-btn {
+  background: linear-gradient(135deg, #0891B2, #0EA5E9);
+  transition: all 0.3s ease;
+}
+
+.gradient-btn:hover {
+  background: linear-gradient(135deg, #066f8a, #0891B2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(8, 145, 178, 0.3);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}

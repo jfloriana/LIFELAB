@@ -1,0 +1,12 @@
+# Variables de entorno (contiene credenciales reales)
+.env
+
+# Dependencias
+node_modules/
+
+# Build
+dist/
+*.tsbuildinfo
+
+# Logs
+*.log
