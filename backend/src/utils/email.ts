@@ -134,7 +134,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string, no
   if (t) {
     try {
       await t.sendMail({
-        from: `"LIFELAB" <${process.env.SMTP_USER || "noreply@lifelab.com"}>`,
+        from: `"LIFELAB" <${process.env.EMAIL_FROM || "noreply@lifelab.com"}>`,
         to: email,
         subject: "Restablece tu contraseña — LIFELAB",
         text: `Hola ${nombre},\n\nRecibimos una solicitud para restablecer tu contrase\u00f1a en LIFELAB.\n\nHaz clic en este enlace para crear una nueva contrase\u00f1a:\n${resetUrl}\n\nSi no solicitaste esto, ignora este correo.\n\n- LIFELAB`,
@@ -245,7 +245,7 @@ export async function sendVerificationEmail(email: string, verifyUrl: string, no
   if (t) {
     try {
       await t.sendMail({
-        from: `"LIFELAB" <${process.env.SMTP_USER || "noreply@lifelab.com"}>`,
+        from: `"LIFELAB" <${process.env.EMAIL_FROM || "noreply@lifelab.com"}>`,
         to: email,
         subject: "Verifica tu correo — LIFELAB",
         text: `Hola ${nombre},\n\nGracias por registrarte en LIFELAB.\n\nPara verificar tu cuenta, haz clic en este enlace:\n${verifyUrl}\n\nEste enlace expira en 24 horas.\n\nSi no creaste esta cuenta, ignora este correo.\n\n- LIFELAB`,
