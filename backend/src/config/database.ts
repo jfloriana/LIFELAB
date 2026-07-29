@@ -33,9 +33,10 @@ async function initPool() {
     database,
     ssl: sslConfig,
     max: 5,
-    connectionTimeoutMillis: 10000,
+    connectionTimeoutMillis: 15000,
     idleTimeoutMillis: 30000,
-  });
+    family: 4,
+  } as any);
 
   pool.on("error", (err) => {
     console.error("Error inesperado en el pool de conexiones:", err.message);
