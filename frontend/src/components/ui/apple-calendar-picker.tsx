@@ -24,7 +24,7 @@ export function formatDateString(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-function classNames(...classes: (string | false | undefined | null)[]) {
+function cn(...classes: (string | false | undefined | null)[]) {
   return classes.filter(Boolean).join(" ");
 }
 
@@ -38,6 +38,8 @@ interface CalendarPickerProps {
   minDate?: Date;
   showTime?: boolean;
 }
+
+const focusRing = "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary";
 
 export function CalendarPicker({
   value,
@@ -56,7 +58,6 @@ export function CalendarPicker({
   const [year, setYear] = useState(initial.getFullYear());
   const [month, setMonth] = useState(initial.getMonth());
   const [mode, setMode] = useState<"days" | "months">("days");
-  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen !== undefined) setOpen(isOpen);
@@ -69,14 +70,16 @@ export function CalendarPicker({
   }, [isOpen]);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-        onClose?.();
-      }
-    };
-    if (open) document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpen(false); onClose?.(); } };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => { document.body.style.overflow = ""; };
   }, [open]);
 
   const prevMonth = () => {
@@ -127,7 +130,7 @@ export function CalendarPicker({
           key={d}
           disabled={disabled}
           onClick={() => handleDay(d)}
-          className={classNames(
+          className={cn(
             "w-[46px] h-[46px] text-[17px] font-medium rounded-full flex items-center justify-center transition-all select-none",
             selected
               ? "bg-primary text-white font-semibold"
@@ -143,7 +146,6 @@ export function CalendarPicker({
     return days;
   };
 
-  const canGoNext = !minDate || new Date(year, month + 1, 0) < new Date(minDate.getFullYear() + 1, 0, 1) || true;
   const canGoPrev = !minDate || (() => {
     const firstOfMonth = new Date(year, month, 1);
     const m = new Date(minDate);
@@ -152,13 +154,19 @@ export function CalendarPicker({
   })();
 
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
         type="button"
         onClick={() => { setOpen(!open); if (!open) setMode("days"); }}
-        className="w-full h-10 px-3.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all duration-200 flex items-center gap-2.5 text-left text-sm"
+        className={cn(
+          "w-full h-10 px-3.5 rounded-xl border border-gray-200 dark:border-white/10",
+          "bg-white dark:bg-white/5 text-foreground dark:text-white",
+          "placeholder:text-muted-foreground/70 dark:placeholder:text-white/30",
+          focusRing,
+          "transition-all duration-200 flex items-center gap-2.5 text-left text-sm"
+        )}
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
           <line x1="16" y1="2" x2="16" y2="6"/>
           <line x1="8" y1="2" x2="8" y2="6"/>
@@ -170,67 +178,70 @@ export function CalendarPicker({
       </button>
 
       {open && (
-        <div className="absolute top-full mt-2 left-0 sm:left-auto right-0 z-50 w-full max-w-[340px] bg-card dark:bg-[#1C1C1E] border border-border dark:border-white/10 rounded-2xl shadow-lg dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] p-5 transition-colors duration-200">
-          {mode === "months" ? (
-            <>
-              <div className="flex items-center justify-between mb-4">
-                <button onClick={() => setYear(y => y - 1)} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
-                  <ChevronLeft />
-                </button>
-                <span className="text-base font-semibold text-foreground dark:text-white">{year}</span>
-                <button onClick={() => setYear(y => y + 1)} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
-                  <ChevronRight />
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {MONTHS.map((m, i) => {
-                  const isCur = i === month;
-                  return (
-                    <button
-                      key={m}
-                      onClick={() => { setMonth(i); setMode("days"); }}
-                      className={classNames(
-                        "py-2 rounded-xl text-sm font-medium transition-all",
-                        isCur ? "bg-primary text-primary-foreground" : "text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10"
-                      )}
-                    >
-                      {m.slice(0, 3)}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-4">
-                <button
-                  onClick={() => setMode("months")}
-                  className="flex items-center gap-1 text-base font-semibold text-foreground dark:text-white hover:opacity-75 transition-opacity"
-                >
-                  <span>{MONTHS[month]} {year}</span>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5">
-                    <path d="m6 9 6 6 6-6"/>
-                  </svg>
-                </button>
-                <div className="flex items-center gap-1">
-                  <button onClick={prevMonth} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors disabled:opacity-20" disabled={!canGoPrev}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-md" onClick={() => { setOpen(false); onClose?.(); }} />
+          <div className="relative w-full max-w-[340px] bg-white dark:bg-[#1C1C1E] border border-gray-200/60 dark:border-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.2)] p-5 animate-in fade-in zoom-in-95 duration-200">
+            {mode === "months" ? (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <button onClick={() => setYear(y => y - 1)} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
                     <ChevronLeft />
                   </button>
-                  <button onClick={nextMonth} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
+                  <span className="text-base font-semibold text-foreground dark:text-white">{year}</span>
+                  <button onClick={() => setYear(y => y + 1)} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
                     <ChevronRight />
                   </button>
                 </div>
-              </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {MONTHS.map((m, i) => {
+                    const isCur = i === month;
+                    return (
+                      <button
+                        key={m}
+                        onClick={() => { setMonth(i); setMode("days"); }}
+                        className={cn(
+                          "py-2 rounded-xl text-sm font-medium transition-all",
+                          isCur ? "bg-primary text-primary-foreground" : "text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10"
+                        )}
+                      >
+                        {m.slice(0, 3)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <button
+                    onClick={() => setMode("months")}
+                    className="flex items-center gap-1 text-base font-semibold text-foreground dark:text-white hover:opacity-75 transition-opacity"
+                  >
+                    <span>{MONTHS[month]} {year}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5">
+                      <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                  </button>
+                  <div className="flex items-center gap-1">
+                    <button onClick={prevMonth} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors disabled:opacity-20" disabled={!canGoPrev}>
+                      <ChevronLeft />
+                    </button>
+                    <button onClick={nextMonth} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
+                      <ChevronRight />
+                    </button>
+                  </div>
+                </div>
 
-              <div className="grid grid-cols-7 gap-y-1 mb-2">
-                {WEEKDAYS.map(d => (
-                  <div key={d} className="text-[11px] font-semibold text-gray-400 dark:text-white/40 text-center tracking-wider">{d}</div>
-                ))}
-              </div>
+                <div className="grid grid-cols-7 gap-y-1 mb-2">
+                  {WEEKDAYS.map(d => (
+                    <div key={d} className="text-[11px] font-semibold text-gray-400 dark:text-white/40 text-center tracking-wider">{d}</div>
+                  ))}
+                </div>
 
-              <div className="grid grid-cols-7 gap-y-1 justify-items-center">{renderDays()}</div>
-            </>
-          )}
+                <div className="grid grid-cols-7 gap-y-1 justify-items-center">{renderDays()}</div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>
