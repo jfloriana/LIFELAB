@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Upload, Clock, User, FlaskConical, CheckCircle2, Circle, Loader, Download, QrCode, ChevronDown, ChevronUp, X, Check, Search } from "lucide-react";
+import { Upload, Clock, User, FlaskConical, CheckCircle2, Circle, Loader, Download, QrCode, ChevronDown, ChevronUp, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
@@ -35,7 +35,8 @@ export default function Resultados() {
   const [selectedPacienteId, setSelectedPacienteId] = useState<number | null>(null);
   const [selectedCitaId, setSelectedCitaId] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [pacienteSearch, setPacienteSearch] = useState("");
+
+
   const formRef = useRef<HTMLFormElement>(null);
 
   // Tab for recepcionista
@@ -132,34 +133,12 @@ export default function Resultados() {
           }} className="space-y-4">
             <div>
               <label className="block text-sm text-gray-500 dark:text-white/40 mb-1.5">Paciente</label>
-              <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Buscar paciente..."
-                  value={pacienteSearch}
-                  onChange={e => { setPacienteSearch(e.target.value); setSelectedPacienteId(null); setSelectedCitaId(null); }}
-                  onBlur={() => setTimeout(() => setPacienteSearch(prev => selectedPacienteId ? prev : ""), 200)}
-                  className="w-full h-11 pl-9 pr-4 rounded-xl border border-border bg-white dark:bg-white/5 text-foreground dark:text-white placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all text-sm"
-                />
-                {pacienteSearch && (
-                  <div className="absolute top-full mt-1 left-0 right-0 z-50 max-h-48 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg dark:border-white/5 dark:bg-[#1C1C1E]">
-                    {pacientesList.filter(p => `${p.nombre} ${p.apellido}`.toLowerCase().includes(pacienteSearch.toLowerCase())).map(p => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => { setSelectedPacienteId(p.id); setPacienteSearch(`${p.nombre} ${p.apellido}`); }}
-                        className="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-white/60 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
-                      >
-                        {p.nombre} {p.apellido}
-                      </button>
-                    ))}
-                    {pacientesList.filter(p => `${p.nombre} ${p.apellido}`.toLowerCase().includes(pacienteSearch.toLowerCase())).length === 0 && (
-                      <p className="px-3 py-2 text-sm text-gray-400">Sin resultados</p>
-                    )}
-                  </div>
-                )}
-              </div>
+              <Select value={selectedPacienteId ? String(selectedPacienteId) : ""} onChange={(e) => { setSelectedPacienteId(e.target.value ? Number(e.target.value) : null); setSelectedCitaId(null); }}>
+                <option value="">Seleccionar paciente...</option>
+                {pacientesList.map((p) => (
+                  <option key={p.id} value={p.id}>{p.nombre} {p.apellido}</option>
+                ))}
+              </Select>
             </div>
             <input type="hidden" name="paciente_id" value={selectedPacienteId || ""} />
 
