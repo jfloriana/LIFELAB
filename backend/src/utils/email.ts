@@ -30,13 +30,14 @@ async function getTransporter() {
   const smtpIp = await resolveHost(smtpHost);
   console.log(`📧 SMTP conectando a ${smtpHost} (${smtpIp})`);
 
+  const smtpPort = parseInt(process.env.SMTP_PORT || "587");
   transporter = nodemailer.createTransport({
     host: smtpIp,
-    port: parseInt(process.env.SMTP_PORT || "587"),
-    secure: false,
+    port: smtpPort,
+    secure: smtpPort === 465,
     auth: { user, pass },
-    connectionTimeout: 5000,
-    greetingTimeout: 5000,
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
   });
 
   return transporter;
