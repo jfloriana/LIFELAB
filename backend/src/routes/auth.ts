@@ -113,16 +113,7 @@ router.post("/forgot-password", resetLimiter,
     );
 
     const resetUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/reset-password?token=${token}`;
-    const smtpConfigured = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
-    if (smtpConfigured) {
-      try {
-        await sendPasswordResetEmail(email, resetUrl, user.nombre);
-      } catch (err) {
-        console.error("Error enviando email:", err);
-      }
-    } else {
-      console.log(`\n🔐 Link de recuperación: ${resetUrl.replace(/token=[^&]+/, "token=***")}\n`);
-    }
+    await sendPasswordResetEmail(email, resetUrl, user.nombre);
 
     res.json({ mensaje: "Revisa tu correo para restablecer tu contraseña" });
   }
@@ -244,17 +235,12 @@ router.post("/resend-verification",
     await db.run("UPDATE users SET email_verification_token = ? WHERE id = ?", [token, user.id]);
 
     const verifyUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email?token=${token}`;
-    const smtpConfigured = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
-    if (smtpConfigured) {
-      try {
-        await sendVerificationEmail(email, verifyUrl, user.nombre);
-      } catch (err) {
-        console.error("Error reenviando email de verificación:", err);
-        res.status(500).json({ error: "Error al enviar el correo. Intenta de nuevo." });
-        return;
-      }
-    } else {
-      console.log(`\n🔗 Link de verificación: ${verifyUrl}\n`);
+    try {
+      await sendVerificationEmail(email, verifyUrl, user.nombre);
+    } catch (err) {
+      console.error("Error reenviando email de verificación:", err);
+      res.status(500).json({ error: "Error al enviar el correo. Intenta de nuevo." });
+      return;
     }
 
     res.json({ mensaje: "Correo reenviado. Revisa tu bandeja de entrada." });

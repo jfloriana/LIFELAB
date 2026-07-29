@@ -30,7 +30,7 @@ if (FRONTEND_URL !== "*" && !/^https?:\/\//.test(FRONTEND_URL)) {
 }
 
 console.log(`📡 FRONTEND_URL: ${FRONTEND_URL}`);
-console.log(`📧 SMTP ${process.env.SMTP_USER ? "configurado" : "NO configurado"}`);
+console.log(`📧 SendGrid ${process.env.SENDGRID_API_KEY ? "configurado" : "NO configurado"}`);
 
 app.use(helmet({
   contentSecurityPolicy: {
