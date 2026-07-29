@@ -18,13 +18,19 @@ import compartidoRoutes from "./routes/compartido";
 import type { Request, Response, NextFunction } from "express";
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 3001;
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-
+let FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 if (FRONTEND_URL === "*") {
   console.warn("⚠️  FRONTEND_URL está configurado como '*'. Esto permite que cualquier sitio web acceda a la API. Configura una URL específica en producción.");
 }
+if (FRONTEND_URL !== "*" && !/^https?:\/\//.test(FRONTEND_URL)) {
+  FRONTEND_URL = `https://${FRONTEND_URL}`;
+}
+
+console.log(`📡 FRONTEND_URL: ${FRONTEND_URL}`);
+console.log(`📧 SMTP ${process.env.SMTP_USER ? "configurado" : "NO configurado"}`);
 
 app.use(helmet({
   contentSecurityPolicy: {
