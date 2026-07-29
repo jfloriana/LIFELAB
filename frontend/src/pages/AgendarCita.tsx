@@ -118,7 +118,6 @@ export default function AgendarCita() {
   const [showNuevoPaciente, setShowNuevoPaciente] = useState(false);
   const [nuevoPaciente, setNuevoPaciente] = useState({ nombre: "", apellido: "", email: "", password: "", dni: "", telefono: "", direccion: "", fecha_nacimiento: "" });
   const [creandoPaciente, setCreandoPaciente] = useState(false);
-  const [showCalFechaNuevo, setShowCalFechaNuevo] = useState(false);
 
   const [pacientesResults, setPacientesResults] = useState<Record<string, unknown>[]>([]);
   const [showPacientesDropdown, setShowPacientesDropdown] = useState(false);
@@ -435,10 +434,13 @@ export default function AgendarCita() {
               </div>
               <div>
                 <label className="block text-sm text-gray-500 dark:text-white/40 mb-1">Fecha de nacimiento</label>
-                <button type="button" onClick={() => setShowCalFechaNuevo(true)}
-                  className="flex w-full items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors hover:border-cyan-400 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:hover:border-cyan-500/50">
-                  <span>{nuevoPaciente.fecha_nacimiento ? (() => { const [y,m,d] = nuevoPaciente.fecha_nacimiento.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" }); })() : "Seleccionar fecha"}</span>
-                </button>
+                <CalendarPicker
+                  value={nuevoPaciente.fecha_nacimiento ? (() => { const [y,m,d] = nuevoPaciente.fecha_nacimiento.split("-").map(Number); return new Date(y,m-1,d); })() : null}
+                  onChange={(date) => {
+                    setNuevoPaciente({ ...nuevoPaciente, fecha_nacimiento: formatDateString(date) });
+                  }}
+                  placeholder="Seleccionar fecha"
+                />
               </div>
             </div>
           </div>
@@ -462,16 +464,6 @@ export default function AgendarCita() {
           </div>
         </form>
       </Dialog>
-
-      <CalendarPicker
-        isOpen={showCalFechaNuevo}
-        onClose={() => setShowCalFechaNuevo(false)}
-        value={nuevoPaciente.fecha_nacimiento ? (() => { const [y,m,d] = nuevoPaciente.fecha_nacimiento.split("-").map(Number); return new Date(y,m-1,d); })() : null}
-        onChange={(date) => {
-          setNuevoPaciente({ ...nuevoPaciente, fecha_nacimiento: formatDateString(date) });
-          setShowCalFechaNuevo(false);
-        }}
-      />
 
       <CalendarPicker
         isOpen={showCalendar}
