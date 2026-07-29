@@ -179,8 +179,8 @@ export function CalendarPicker({
 
       {open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-md" onClick={() => { setOpen(false); onClose?.(); }} />
-          <div className="relative w-full max-w-[340px] bg-white dark:bg-[#1C1C1E] border border-gray-200/60 dark:border-white/10 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.2)] p-5 animate-in fade-in zoom-in-95 duration-200">
+          <div className="absolute inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-lg dark:backdrop-blur-xl" onClick={() => { setOpen(false); onClose?.(); }} />
+          <div className="relative w-full max-w-[340px] bg-white dark:bg-[#1C1C1E] border-2 border-gray-200/80 dark:border-white/20 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.25)] dark:shadow-[0_8px_60px_rgba(0,0,0,0.6)] p-5 animate-in fade-in zoom-in-95 duration-200">
             {mode === "months" ? (
               <>
                 <div className="flex items-center justify-between mb-4">
