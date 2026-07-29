@@ -130,10 +130,10 @@ export function CalendarPicker({
           className={classNames(
             "w-[46px] h-[46px] text-[17px] font-medium rounded-full flex items-center justify-center transition-all select-none",
             selected
-              ? "bg-[#007AFF] text-white font-semibold"
+              ? "bg-primary text-white font-semibold"
               : disabled
-                ? "text-gray-300 dark:text-white/15 cursor-default"
-                : "text-[#1C1C1E] dark:text-white hover:bg-[#007AFF]/10 dark:hover:bg-white/10 active:bg-[#007AFF]/20"
+                ? "text-muted-foreground/30 dark:text-white/15 cursor-default"
+                : "text-foreground dark:text-white hover:bg-primary/10 dark:hover:bg-white/10 active:bg-primary/20"
           )}
         >
           {d}
@@ -156,29 +156,29 @@ export function CalendarPicker({
       <button
         type="button"
         onClick={() => { setOpen(!open); if (!open) setMode("days"); }}
-        className="w-full h-12 px-4 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-[#1C1C1E] dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF] transition-all duration-200 flex items-center gap-2 text-left text-sm"
+        className="w-full h-10 px-3.5 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 text-foreground dark:text-white placeholder:text-muted-foreground dark:placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all duration-200 flex items-center gap-2.5 text-left text-sm"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#007AFF] shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary shrink-0">
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
           <line x1="16" y1="2" x2="16" y2="6"/>
           <line x1="8" y1="2" x2="8" y2="6"/>
           <line x1="3" y1="10" x2="21" y2="10"/>
         </svg>
-        <span className={value ? "text-sm text-[#1C1C1E] dark:text-white" : "text-sm text-gray-400 dark:text-white/30"}>
+        <span className={value ? "text-sm text-foreground dark:text-white" : "text-sm text-muted-foreground dark:text-white/30"}>
           {value ? formatDisplay(value) : placeholder}
         </span>
       </button>
 
       {open && (
-        <div className="absolute top-full mt-2 left-0 sm:left-auto right-0 z-50 w-full sm:w-[340px] bg-white dark:bg-[#1C1C1E] border border-gray-200/60 dark:border-white/10 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] p-5 transition-colors duration-200">
+        <div className="absolute top-full mt-2 left-0 sm:left-auto right-0 z-50 w-full sm:w-[340px] bg-card dark:bg-[#1C1C1E] border border-border dark:border-white/10 rounded-2xl shadow-lg dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] p-5 transition-colors duration-200">
           {mode === "months" ? (
             <>
               <div className="flex items-center justify-between mb-4">
-                <button onClick={() => setYear(y => y - 1)} className="p-1.5 text-[#1C1C1E] dark:text-white hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors">
+                <button onClick={() => setYear(y => y - 1)} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
                   <ChevronLeft />
                 </button>
-                <span className="text-base font-semibold text-[#1C1C1E] dark:text-white">{year}</span>
-                <button onClick={() => setYear(y => y + 1)} className="p-1.5 text-[#1C1C1E] dark:text-white hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors">
+                <span className="text-base font-semibold text-foreground dark:text-white">{year}</span>
+                <button onClick={() => setYear(y => y + 1)} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
                   <ChevronRight />
                 </button>
               </div>
@@ -191,7 +191,7 @@ export function CalendarPicker({
                       onClick={() => { setMonth(i); setMode("days"); }}
                       className={classNames(
                         "py-2 rounded-xl text-sm font-medium transition-all",
-                        isCur ? "bg-[#007AFF] text-white" : "text-[#1C1C1E] dark:text-white hover:bg-black/5 dark:hover:bg-white/10"
+                        isCur ? "bg-primary text-primary-foreground" : "text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10"
                       )}
                     >
                       {m.slice(0, 3)}
@@ -205,7 +205,7 @@ export function CalendarPicker({
               <div className="flex items-center justify-between mb-4">
                 <button
                   onClick={() => setMode("months")}
-                  className="flex items-center gap-1 text-base font-semibold text-[#1C1C1E] dark:text-white hover:opacity-75 transition-opacity"
+                  className="flex items-center gap-1 text-base font-semibold text-foreground dark:text-white hover:opacity-75 transition-opacity"
                 >
                   <span>{MONTHS[month]} {year}</span>
                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5">
@@ -213,10 +213,10 @@ export function CalendarPicker({
                   </svg>
                 </button>
                 <div className="flex items-center gap-1">
-                  <button onClick={prevMonth} className="p-1.5 text-[#1C1C1E] dark:text-white hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors disabled:opacity-20" disabled={!canGoPrev}>
+                  <button onClick={prevMonth} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors disabled:opacity-20" disabled={!canGoPrev}>
                     <ChevronLeft />
                   </button>
-                  <button onClick={nextMonth} className="p-1.5 text-[#1C1C1E] dark:text-white hover:bg-black/5 dark:hover:bg-white/10 rounded-lg transition-colors">
+                  <button onClick={nextMonth} className="p-1.5 text-foreground dark:text-white hover:bg-muted dark:hover:bg-white/10 rounded-lg transition-colors">
                     <ChevronRight />
                   </button>
                 </div>
