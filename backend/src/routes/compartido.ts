@@ -38,9 +38,6 @@ router.get("/:token", compartidoLimiter, async (req, res) => {
   const info: Record<string, unknown> = {};
   cols.forEach((col: string, i: number) => { info[col] = row[i]; });
 
-  // Single-use: expire token after first view
-  await expireToken(req.params.token as string);
-
   res.json(info);
 });
 
