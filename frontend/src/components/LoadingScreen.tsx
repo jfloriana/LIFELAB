@@ -23,7 +23,7 @@ export function LoadingScreen() {
 
       <div className="relative z-10 min-h-dvh flex flex-col items-center justify-center px-4">
         <div className="relative mb-10">
-          <ThinkingOrb state="listening" size={72} />
+          <ThinkingOrb state="listening" size={64} />
           <div className="absolute -inset-4 rounded-full bg-primary/10 animate-ping opacity-40" />
           <div className="absolute -inset-8 rounded-full bg-primary/5 animate-ping opacity-20" style={{ animationDelay: "0.3s", animationDuration: "2.5s" }} />
         </div>
