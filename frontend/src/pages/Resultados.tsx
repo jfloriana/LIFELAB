@@ -241,7 +241,7 @@ export default function Resultados() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-white">{r.paciente_nombre as string} {r.paciente_apellido as string}</p>
                         <p className="text-xs text-gray-500 dark:text-white/40">{r.titulo as string} — subido por {r.subido_por_nombre as string} {r.subido_por_apellido as string}</p>
-                        {r.cita_fecha && (
+                        {(r.cita_fecha as string) && (
                           <p className="text-xs text-gray-400 dark:text-white/30 mt-0.5">
                             {r.cita_fecha as string} {r.cita_hora_inicio as string}{r.cita_idx ? ` — IDX: ${r.cita_idx}` : ""}
                           </p>
@@ -303,7 +303,7 @@ export default function Resultados() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-gray-900 dark:text-white">{r.paciente_nombre as string} {r.paciente_apellido as string}</p>
                         <p className="text-xs text-gray-500 dark:text-white/40">{r.titulo as string}</p>
-                        {r.cita_fecha && (
+                        {(r.cita_fecha as string) && (
                           <p className="text-xs text-gray-400 dark:text-white/30 mt-0.5">
                             {r.cita_fecha as string} {r.cita_hora_inicio as string}{r.cita_idx ? ` — IDX: ${r.cita_idx}` : ""}
                           </p>

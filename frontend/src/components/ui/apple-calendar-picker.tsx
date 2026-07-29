@@ -26,10 +26,10 @@ export function formatDateString(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-export function CalendarPicker({ value, onChange, placeholder = "Seleccionar fecha" }: { value: Date | null; onChange: (d: Date) => void; placeholder?: string }) {
-  const [open, setOpen] = useState(false);
+export function CalendarPicker({ value, onChange, placeholder = "Seleccionar fecha", isOpen, onClose, initialDate }: { value: Date | null; onChange: (d: Date) => void; placeholder?: string; isOpen?: boolean; onClose?: () => void; initialDate?: Date; showTime?: boolean }) {
+  const [open, setOpen] = useState(isOpen ?? false);
   const [showDropdown, setShowDropdown] = useState(false);
-  const today = value || new Date();
+  const today = (value || initialDate || new Date());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [selectedDay, setSelectedDay] = useState(today.getDate());
@@ -41,8 +41,12 @@ export function CalendarPicker({ value, onChange, placeholder = "Seleccionar fec
   }, [open]);
 
   useEffect(() => {
+    if (isOpen !== undefined) setOpen(isOpen);
+  }, [isOpen]);
+
+  useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); onClose?.(); }
     };
     if (open) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -65,6 +69,7 @@ export function CalendarPicker({ value, onChange, placeholder = "Seleccionar fec
     setSelectedDay(day);
     onChange(new Date(currentYear, currentMonth, day));
     setOpen(false);
+    onClose?.();
   };
 
   const formatDisplay = (d: Date) => {
