@@ -3,6 +3,7 @@ import { Plus, Search, Edit, Trash2, Mail, Phone, MapPin, IdCard, ChevronDown, C
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
+import { CalendarPicker, formatDateString, normalizeDateString } from "@/components/ui/apple-calendar-picker";
 import { getPacientes, createPaciente, updatePaciente, buscarPacientes, deleteUser } from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,7 +16,7 @@ export default function Pacientes() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState({ nombre: "", apellido: "", email: "", password: "", dni: "", telefono: "", direccion: "" });
+  const [form, setForm] = useState({ nombre: "", apellido: "", email: "", password: "", dni: "", telefono: "", direccion: "", fecha_nacimiento: "" });
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
 
   async function load() {
@@ -56,6 +57,7 @@ export default function Pacientes() {
       dni: p.dni as string || "",
       telefono: p.telefono as string || "",
       direccion: p.direccion as string || "",
+      fecha_nacimiento: normalizeDateString(p.fecha_nacimiento as string) || "",
     });
     setShowForm(true);
   }
@@ -255,6 +257,14 @@ export default function Pacientes() {
               <div>
                 <label className="block text-sm text-gray-500 dark:text-white/40 mb-1">DNI</label>
                 <Input value={form.dni} onChange={(e) => setForm({ ...form, dni: e.target.value })} maxLength={8} required />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-500 dark:text-white/40 mb-1">Fecha de nacimiento</label>
+                <CalendarPicker
+                  value={form.fecha_nacimiento ? (() => { const [y,m,d] = form.fecha_nacimiento.split("-").map(Number); return new Date(y,m-1,d); })() : null}
+                  onChange={(date) => setForm({ ...form, fecha_nacimiento: formatDateString(date) })}
+                  placeholder="Seleccionar fecha"
+                />
               </div>
             </div>
           </div>

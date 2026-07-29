@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Dialog } from "@/components/ui/dialog";
+import { CalendarPicker, formatDateString } from "@/components/ui/apple-calendar-picker";
 import { getUsers, createUser, updateUser, deleteUser } from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -197,7 +198,11 @@ export default function Users() {
               </div>
               <div>
                 <label className="block text-sm text-gray-500 dark:text-white/40 mb-1">Fecha de nacimiento</label>
-                <Input type="date" value={form.fecha_nacimiento} onChange={(e) => setForm({ ...form, fecha_nacimiento: e.target.value })} />
+                <CalendarPicker
+                  value={form.fecha_nacimiento ? (() => { const [y,m,d] = form.fecha_nacimiento.split("-").map(Number); return new Date(y,m-1,d); })() : null}
+                  onChange={(date) => setForm({ ...form, fecha_nacimiento: formatDateString(date) })}
+                  placeholder="Seleccionar fecha"
+                />
               </div>
             </div>
           )}
