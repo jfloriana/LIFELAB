@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -14,20 +14,13 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { FAQ } from "@/components/ui/faq-tabs";
 import MapLifelab from "@/components/ui/map-lifelab";
 import { getResenasAprobadas } from "@/services/api";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function Landing() {
   const navigate = useNavigate();
-  const [isDark, setIsDark] = useState(true);
+  const { isDark, toggle: toggleDark } = useTheme();
   const [resenas, setResenas] = useState<TestimonialData[]>([]);
   const [subscribeEmail, setSubscribeEmail] = useState("");
-
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [isDark]);
 
   useEffect(() => {
     getResenasAprobadas()
@@ -80,7 +73,7 @@ export default function Landing() {
               <span className="text-xl font-bold text-foreground dark:text-white">LIFELAB</span>
             </div>
             <div className="flex items-center gap-4">
-              <ThemeToggle isDark={isDark} onToggle={() => setIsDark(!isDark)} />
+              <ThemeToggle isDark={isDark} onToggle={toggleDark} />
               <button className="text-sm text-foreground/70 dark:text-white/70 hover:text-foreground dark:hover:text-white transition-colors">Contacto</button>
               <button onClick={() => navigate("/auth")} className="px-5 py-2 text-sm font-semibold text-primary border-2 border-primary rounded-lg hover:bg-primary hover:text-white transition-all duration-200">
                 Iniciar Sesión

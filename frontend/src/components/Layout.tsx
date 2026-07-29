@@ -1,18 +1,14 @@
-import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { Sidebar } from "@/components/ui/modern-side-bar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function Layout() {
   const { user, logout } = useAuth();
+  const { isDark, toggle: toggleDark } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  const [isDark, setIsDark] = useState(true);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", isDark);
-  }, [isDark]);
 
   if (!user) return null;
 
@@ -42,7 +38,7 @@ export function Layout() {
       />
       <div className="flex flex-1 flex-col min-w-0">
         <header className="flex h-16 items-center justify-end gap-3 border-b border-gray-200 bg-white/80 px-4 sm:px-6 backdrop-blur-sm dark:border-white/5 dark:bg-[#080c16]/80">
-          <ThemeToggle isDark={isDark} onToggle={() => setIsDark(!isDark)} />
+          <ThemeToggle isDark={isDark} onToggle={toggleDark} />
         </header>
         <main className="flex-1 overflow-auto p-4 sm:p-6">
           <Outlet />
