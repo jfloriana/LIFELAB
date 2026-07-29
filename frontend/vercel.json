@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://lifelab-api.onrender.com/api/$1"
+      "destination": "https://lifelab-api-t0zq.onrender.com/api/$1"
     }
   ]
 }
