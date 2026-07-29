@@ -181,6 +181,13 @@ export async function createDatabase() {
     await queryWithRetry("ALTER TABLE resultados ADD COLUMN estado TEXT NOT NULL DEFAULT 'pendiente'");
   }
 
+  // Ensure archivo_data column exists (persistencia en BD)
+  try {
+    await queryWithRetry("SELECT archivo_data FROM resultados LIMIT 1");
+  } catch {
+    await queryWithRetry("ALTER TABLE resultados ADD COLUMN archivo_data BYTEA");
+  }
+
   // Ensure token_version column exists
   try {
     await queryWithRetry("SELECT token_version FROM users LIMIT 1");

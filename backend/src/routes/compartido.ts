@@ -44,24 +44,36 @@ router.get("/:token", compartidoLimiter, async (req, res) => {
 router.get("/:token/download", compartidoLimiter, async (req, res) => {
   const db = getDatabase();
   const result = await db.exec(
-    "SELECT archivo_path, archivo_nombre FROM resultados WHERE compartido_token = ? AND (compartido_expira IS NULL OR compartido_expira > NOW())",
+    "SELECT archivo_path, archivo_nombre, archivo_data FROM resultados WHERE compartido_token = ? AND (compartido_expira IS NULL OR compartido_expira > NOW())",
     [req.params.token as string]
   );
   if (!result.length || !result[0].values.length) {
     res.status(404).json({ error: "Resultado no encontrado o enlace expirado" });
     return;
   }
+  const cols = result[0].columns;
   const row = result[0].values[0];
-  const filePath = row[0] as string;
-  const fileName = row[1] as string;
+  const r: Record<string, unknown> = {};
+  cols.forEach((col: string, i: number) => { r[col] = row[i]; });
+
+  const fileName = r.archivo_nombre as string;
+
+  if (r.archivo_data) {
+    const buf = r.archivo_data instanceof Buffer ? r.archivo_data : Buffer.from(r.archivo_data as Uint8Array);
+    await expireToken(req.params.token as string);
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", `attachment; filename="${fileName}"`);
+    res.send(buf);
+    return;
+  }
+
+  const filePath = r.archivo_path as string;
   if (!fs.existsSync(filePath)) {
     res.status(404).json({ error: "Archivo no encontrado" });
     return;
   }
 
-  // Single-use: expire token after download
   await expireToken(req.params.token as string);
-
   res.download(filePath, fileName);
 });
 

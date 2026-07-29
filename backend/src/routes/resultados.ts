@@ -162,11 +162,15 @@ router.post("/upload",
     return;
   }
 
+  const pdfBuffer = fs.readFileSync(req.file.path);
+
   await db.run(
-    `INSERT INTO resultados (paciente_id, subido_por, tipo, titulo, archivo_nombre, archivo_path, cita_id, estado)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente')`,
-    [paciente_id, req.user!.userId, tipo || "analisis", titulo || "Resultado", req.file.filename, req.file.path, cita_id || null]
+    `INSERT INTO resultados (paciente_id, subido_por, tipo, titulo, archivo_nombre, archivo_path, archivo_data, cita_id, estado)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendiente')`,
+    [paciente_id, req.user!.userId, tipo || "analisis", titulo || "Resultado", req.file.filename, req.file.path, pdfBuffer, cita_id || null]
   );
+
+  fs.unlinkSync(req.file.path);
   res.status(201).json({ mensaje: "Resultado subido exitosamente" });
 });
 
@@ -195,6 +199,14 @@ router.get("/download/:id", validateId(), async (req, res) => {
     res.status(403).json({ error: "No autorizado" }); return;
   }
 
+  if (r.archivo_data) {
+    const buf = r.archivo_data instanceof Buffer ? r.archivo_data : Buffer.from(r.archivo_data as Uint8Array);
+    res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", `attachment; filename="${r.archivo_nombre}"`);
+    res.send(buf);
+    return;
+  }
   if (!fs.existsSync(r.archivo_path as string)) {
     res.status(404).json({ error: "Archivo no encontrado en el servidor" });
     return;
@@ -265,7 +277,7 @@ router.put("/:id",
   }
 
   let archivo_nombre = r.archivo_nombre as string;
-  let archivo_path = r.archivo_path as string;
+  let archivo_data = r.archivo_data as Buffer | null;
 
   if (req.file) {
     if (!isValidPdf(req.file.path)) {
@@ -273,22 +285,20 @@ router.put("/:id",
       res.status(400).json({ error: "El archivo no es un PDF válido" });
       return;
     }
-    if (fs.existsSync(r.archivo_path as string)) {
-      fs.unlinkSync(r.archivo_path as string);
-    }
     archivo_nombre = req.file.filename;
-    archivo_path = req.file.path;
+    archivo_data = fs.readFileSync(req.file.path);
+    fs.unlinkSync(req.file.path);
   }
 
   if (role === "bioanalista") {
-    await db.run("UPDATE resultados SET archivo_nombre = ?, archivo_path = ? WHERE id = ?",
-      [archivo_nombre, archivo_path, req.params!.id]);
+    await db.run("UPDATE resultados SET archivo_nombre = ?, archivo_data = ? WHERE id = ?",
+      [archivo_nombre, archivo_data, req.params!.id]);
     res.json({ mensaje: "Archivo actualizado exitosamente" });
   } else {
     const { titulo, tipo } = req.body;
     await db.run(
-      "UPDATE resultados SET titulo = ?, tipo = ?, archivo_nombre = ?, archivo_path = ? WHERE id = ?",
-      [titulo || r.titulo, tipo || r.tipo, archivo_nombre, archivo_path, req.params!.id]
+      "UPDATE resultados SET titulo = ?, tipo = ?, archivo_nombre = ?, archivo_data = ? WHERE id = ?",
+      [titulo || r.titulo, tipo || r.tipo, archivo_nombre, archivo_data, req.params!.id]
     );
     res.json({ mensaje: "Resultado actualizado exitosamente" });
   }
