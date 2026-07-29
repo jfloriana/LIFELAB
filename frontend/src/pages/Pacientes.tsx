@@ -57,7 +57,7 @@ export default function Pacientes() {
       dni: p.dni as string || "",
       telefono: p.telefono as string || "",
       direccion: p.direccion as string || "",
-      fecha_nacimiento: normalizeDateString(p.fecha_nacimiento as string) || "",
+      fecha_nacimiento: p.fecha_nacimiento ? normalizeDateString(p.fecha_nacimiento as string) : "",
     });
     setShowForm(true);
   }
