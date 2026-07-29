@@ -136,7 +136,7 @@ export function CalendarPicker({
               ? "bg-primary text-white font-semibold"
               : disabled
                 ? "text-muted-foreground/30 dark:text-white/15 cursor-default"
-                : "text-foreground dark:text-white hover:bg-primary/10 dark:hover:bg-white/10 active:bg-primary/20"
+                : "text-foreground dark:text-white hover:bg-primary/10 active:bg-primary/20"
           )}
         >
           {d}
@@ -179,7 +179,7 @@ export function CalendarPicker({
 
       {open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-lg dark:backdrop-blur-xl" onClick={() => { setOpen(false); onClose?.(); }} />
+          <div className="absolute inset-0 bg-black/40 dark:bg-black/50 backdrop-blur-lg dark:backdrop-blur-xl" onClick={() => { setOpen(false); onClose?.(); }} />
           <div className="relative w-full max-w-[340px] bg-white dark:bg-[#1C1C1E] border-2 border-gray-200/80 dark:border-white/20 rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.25)] dark:shadow-[0_8px_60px_rgba(0,0,0,0.6)] p-5 animate-in fade-in zoom-in-95 duration-200">
             {mode === "months" ? (
               <>

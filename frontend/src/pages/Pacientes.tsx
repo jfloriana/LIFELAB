@@ -43,7 +43,7 @@ export default function Pacientes() {
 
   function openCreate() {
     setEditId(null);
-    setForm({ nombre: "", apellido: "", email: "", password: "", dni: "", telefono: "", direccion: "" });
+    setForm({ nombre: "", apellido: "", email: "", password: "", dni: "", telefono: "", direccion: "", fecha_nacimiento: "" });
     setShowForm(true);
   }
 
