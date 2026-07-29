@@ -107,7 +107,7 @@ export default function AgendarCita() {
     const d = new Date();
     return formatDateString(d);
   });
-  const [showCalendar, setShowCalendar] = useState(false);
+
   const [edad, setEdad] = useState("");
   const [idx, setIdx] = useState("");
   const [pacienteSearch, setPacienteSearch] = useState("JOEL ARÉVALO");
@@ -268,11 +268,11 @@ export default function AgendarCita() {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-white/50">Fecha</label>
-                <button type="button" onClick={() => setShowCalendar(true)}
-                  className="flex w-full items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors hover:border-cyan-400 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:hover:border-cyan-500/50">
-                  <Calendar size={16} className="text-cyan-500 shrink-0" />
-                  <span>{(() => { const [y,m,d] = selectedDate.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString("es-MX", { weekday: "long", year: "numeric", month: "long", day: "numeric" }); })()}</span>
-                </button>
+                <CalendarPicker
+                  value={(/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) ? (() => { const [y,m,d] = selectedDate.split("-").map(Number); return new Date(y,m-1,d); })() : null}
+                  onChange={(date) => setSelectedDate(formatDateString(date))}
+                  minDate={new Date()}
+                />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-white/50">Edad</label>
@@ -465,13 +465,7 @@ export default function AgendarCita() {
         </form>
       </Dialog>
 
-      <CalendarPicker
-        isOpen={showCalendar}
-        onClose={() => setShowCalendar(false)}
-        value={(/^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) ? (() => { const [y,m,d] = selectedDate.split("-").map(Number); return new Date(y,m-1,d); })() : null}
-        onChange={(date) => setSelectedDate(formatDateString(date))}
-        minDate={new Date()}
-      />
+
     </div>
   );
 }
