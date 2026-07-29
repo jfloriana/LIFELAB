@@ -1,8 +1,14 @@
 import { Pool } from "pg";
 import fs from "fs";
 import bcrypt from "bcryptjs";
+import dns from "dns";
 
 let pool: Pool;
+
+async function resolveIPv4(host: string): Promise<string> {
+  const { address } = await dns.promises.lookup(host, { family: 4 });
+  return address;
+}
 
 async function initPool() {
   const rawUrl = process.env.DATABASE_URL;
@@ -25,18 +31,20 @@ async function initPool() {
     console.warn("⚠️  Verificación SSL de BD deshabilitada. Para produción, configura DB_SSL_CA_PATH con el certificado CA.");
   }
 
+  const ipv4 = await resolveIPv4(host);
+  console.log(`🔌 Conectando a BD en IPv4: ${ipv4}:${port}`);
+
   pool = new Pool({
     user,
     password,
-    host,
+    host: ipv4,
     port: parseInt(port),
     database,
     ssl: sslConfig,
     max: 5,
     connectionTimeoutMillis: 15000,
     idleTimeoutMillis: 30000,
-    family: 4,
-  } as any);
+  });
 
   pool.on("error", (err) => {
     console.error("Error inesperado en el pool de conexiones:", err.message);
