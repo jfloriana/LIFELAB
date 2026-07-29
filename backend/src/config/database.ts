@@ -12,6 +12,8 @@ async function initPool() {
   if (!match) throw new Error("DATABASE_URL formato inválido");
 
   const [, user, password, host, port, database] = match;
+  const decodedUser = decodeURIComponent(user);
+  const decodedPassword = decodeURIComponent(password);
 
   const sslCaPath = process.env.DB_SSL_CA_PATH;
   const sslConfig: { rejectUnauthorized: boolean; ca?: string } = {
@@ -26,8 +28,8 @@ async function initPool() {
   }
 
   pool = new Pool({
-    user,
-    password,
+    user: decodedUser,
+    password: decodedPassword,
     host,
     port: parseInt(port),
     database,
