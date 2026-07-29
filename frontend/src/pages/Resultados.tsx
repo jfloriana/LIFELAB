@@ -95,14 +95,15 @@ export default function Resultados() {
     const bioName = user ? `${user.nombre} ${user.apellido}` : "";
     const pacientesList = [...new Map(
       citas
-        .filter((c) => (c.medico as string) === bioName)
+        .filter((c) => (c.medico as string) === bioName && ["aprobada", "en_proceso"].includes(c.estado as string))
         .map((c) => [c.paciente_id as number, { id: c.paciente_id as number, nombre: c.paciente_nombre as string, apellido: c.paciente_apellido as string }])
     ).values()].sort((a, b) => a.nombre.localeCompare(b.nombre));
     const citasPaciente = selectedPacienteId
       ? citas.filter((c) =>
           (c.paciente_id as number) === selectedPacienteId &&
           !citasConResultado.has(c.id as number) &&
-          (c.medico as string) === bioName
+          (c.medico as string) === bioName &&
+          ["aprobada", "en_proceso"].includes(c.estado as string)
         )
       : [];
 

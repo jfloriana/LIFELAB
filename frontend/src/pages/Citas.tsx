@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { ChevronLeft, ChevronRight, Clock, User, FlaskConical, CheckCircle, Circle, Loader, ChevronDown, ChevronUp } from "lucide-react";
-import { getCitas, updateAnalisisEstado } from "@/services/api";
+import { getCitas, updateAnalisisEstado, aprobarCita } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -32,6 +32,7 @@ const analysisStateColors: Record<string, string> = {
 
 const citaStateColors: Record<string, string> = {
   pendiente: "bg-yellow-500/20 text-yellow-600 dark:text-yellow-400",
+  aprobada: "bg-green-500/20 text-green-600 dark:text-green-400",
   en_proceso: "bg-blue-500/20 text-blue-600 dark:text-blue-400",
   completada: "bg-green-500/20 text-green-600 dark:text-green-400",
   cancelada: "bg-red-500/20 text-red-600 dark:text-red-400",
@@ -117,6 +118,16 @@ export default function Citas() {
     }
   }
 
+  async function handleAprobarCita(citaId: number) {
+    try {
+      await aprobarCita(citaId);
+      toast("Cita aprobada exitosamente", "success");
+      load();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : "Error");
+    }
+  }
+
   function prevMonth() {
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1); }
     else setCurrentMonth(m => m - 1);
@@ -176,7 +187,9 @@ export default function Citas() {
                     ? "bg-red-500/20 text-red-700 dark:text-red-300"
                     : (c.estado as string) === "en_proceso"
                       ? "bg-blue-500/20 text-blue-700 dark:text-blue-300"
-                      : "bg-yellow-500/15 text-yellow-700 dark:text-yellow-300"
+                      : (c.estado as string) === "aprobada"
+                        ? "bg-green-500/15 text-green-700 dark:text-green-300"
+                        : "bg-yellow-500/15 text-yellow-700 dark:text-yellow-300"
               }`}
             >
               <span className="font-mono">{c.hora_inicio as string}</span>{" "}
@@ -293,9 +306,17 @@ export default function Citas() {
                             </div>
                           </div>
                         </div>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${citaStateColors[estado] || citaStateColors.pendiente}`}>
-                          {estado === "en_proceso" ? "En Proceso" : estado.charAt(0).toUpperCase() + estado.slice(1)}
-                        </span>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium shrink-0 ${citaStateColors[estado] || citaStateColors.pendiente}`}>
+                            {estado === "en_proceso" ? "En Proceso" : estado.charAt(0).toUpperCase() + estado.slice(1)}
+                          </span>
+                          {(user?.role === "admin" || user?.role === "recepcionista") && estado === "pendiente" && (
+                            <button
+                              onClick={() => handleAprobarCita(c.id as number)}
+                              className="px-2 py-0.5 rounded-lg text-[10px] font-medium text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-500/10 transition-all ml-1"
+                            >
+                              Aprobar
+                            </button>
+                          )}
                       </div>
 
                       {!!c.medico && (

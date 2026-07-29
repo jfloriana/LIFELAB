@@ -121,6 +121,10 @@ export async function updateCita(id: number, data: Record<string, unknown>) {
   });
 }
 
+export async function aprobarCita(id: number) {
+  return request<{ mensaje: string }>(`/citas/${id}/aprobar`, { method: "PUT" });
+}
+
 export async function deleteCita(id: number) {
   return request<{ mensaje: string }>(`/citas/${id}`, { method: "DELETE" });
 }

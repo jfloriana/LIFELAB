@@ -198,13 +198,31 @@ router.put("/:id/estado", validateId(), async (req, res) => {
     res.status(403).json({ error: "No autorizado" }); return;
   }
   const { estado } = req.body;
-  if (!["pendiente", "completada", "cancelada"].includes(estado)) {
+  if (!["pendiente", "aprobada", "completada", "cancelada"].includes(estado)) {
     res.status(400).json({ error: "Estado inválido" });
     return;
   }
   const db = getDatabase();
   await db.run("UPDATE citas SET estado = ? WHERE id = ?", [estado, req.params!.id]);
   res.json({ mensaje: "Estado actualizado" });
+});
+
+router.put("/:id/aprobar", validateId(), async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) { res.status(400).json({ error: errors.array()[0].msg }); return; }
+  if (req.user!.role !== "admin" && req.user!.role !== "recepcionista") {
+    res.status(403).json({ error: "No autorizado" }); return;
+  }
+  const db = getDatabase();
+  const result = await db.exec("SELECT id, estado FROM citas WHERE id = ?", [req.params!.id]);
+  if (!result.length || !result[0].values.length) {
+    res.status(404).json({ error: "Cita no encontrada" }); return;
+  }
+  if (result[0].values[0][1] !== "pendiente") {
+    res.status(409).json({ error: "La cita ya fue procesada" }); return;
+  }
+  await db.run("UPDATE citas SET estado = 'aprobada' WHERE id = ?", [req.params!.id]);
+  res.json({ mensaje: "Cita aprobada exitosamente" });
 });
 
 router.put("/:id",
