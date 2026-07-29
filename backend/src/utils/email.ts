@@ -5,8 +5,6 @@ function escaparHtml(texto: string): string {
   return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-let transporter: nodemailer.Transporter | null = null;
-
 async function resolveHost(host: string): Promise<string> {
   try {
     const { address } = await dns.promises.lookup(host, { family: 4 });
@@ -17,8 +15,6 @@ async function resolveHost(host: string): Promise<string> {
 }
 
 async function getTransporter() {
-  if (transporter) return transporter;
-
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
 
@@ -31,7 +27,7 @@ async function getTransporter() {
   console.log(`📧 SMTP conectando a ${smtpHost} (${smtpIp})`);
 
   const smtpPort = parseInt(process.env.SMTP_PORT || "587");
-  transporter = nodemailer.createTransport({
+  return nodemailer.createTransport({
     host: smtpIp,
     port: smtpPort,
     secure: smtpPort === 465,
@@ -39,8 +35,6 @@ async function getTransporter() {
     connectionTimeout: 15000,
     greetingTimeout: 15000,
   });
-
-  return transporter;
 }
 
 export async function sendPasswordResetEmail(email: string, resetUrl: string, nombre: string): Promise<void> {
@@ -131,27 +125,29 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string, no
 
   const t = await getTransporter();
 
-  if (t) {
-    try {
-      await t.sendMail({
-        from: `"LIFELAB" <${process.env.EMAIL_FROM || "noreply@lifelab.com"}>`,
-        to: email,
-        subject: "Restablece tu contraseña — LIFELAB",
-        text: `Hola ${nombre},\n\nRecibimos una solicitud para restablecer tu contrase\u00f1a en LIFELAB.\n\nHaz clic en este enlace para crear una nueva contrase\u00f1a:\n${resetUrl}\n\nSi no solicitaste esto, ignora este correo.\n\n- LIFELAB`,
-        html,
-      });
-      return;
-    } catch (err) {
-      console.error("Error enviando email de recuperación:", err);
-    }
+  if (!t) {
+    const maskedUrl = resetUrl.replace(/token=[^&]+/, "token=***");
+    console.log("\n========================================");
+    console.log("🔐 RESTABLECER CONTRASEÑA (modo desarrollo)");
+    console.log(`   Para: ${email}`);
+    console.log(`   Usuario: ${nombre}`);
+    console.log(`   Enlace: ${maskedUrl}`);
+    console.log("========================================\n");
+    return;
   }
-  const maskedUrl = resetUrl.replace(/token=[^&]+/, "token=***");
-  console.log("\n========================================");
-  console.log("🔐 RESTABLECER CONTRASEÑA (modo desarrollo)");
-  console.log(`   Para: ${email}`);
-  console.log(`   Usuario: ${nombre}`);
-  console.log(`   Enlace: ${maskedUrl}`);
-  console.log("========================================\n");
+
+  try {
+    await t.sendMail({
+      from: `"LIFELAB" <${process.env.EMAIL_FROM || "noreply@lifelab.com"}>`,
+      to: email,
+      subject: "Restablece tu contraseña — LIFELAB",
+      text: `Hola ${nombre},\n\nRecibimos una solicitud para restablecer tu contrase\u00f1a en LIFELAB.\n\nHaz clic en este enlace para crear una nueva contrase\u00f1a:\n${resetUrl}\n\nSi no solicitaste esto, ignora este correo.\n\n- LIFELAB`,
+      html,
+    });
+    console.log(`✅ Email de recuperación enviado a ${email}`);
+  } catch (err) {
+    console.error("Error enviando email de recuperación:", err);
+  }
 }
 
 export async function sendVerificationEmail(email: string, verifyUrl: string, nombre: string): Promise<void> {
@@ -242,24 +238,26 @@ export async function sendVerificationEmail(email: string, verifyUrl: string, no
 
   const t = await getTransporter();
 
-  if (t) {
-    try {
-      await t.sendMail({
-        from: `"LIFELAB" <${process.env.EMAIL_FROM || "noreply@lifelab.com"}>`,
-        to: email,
-        subject: "Verifica tu correo — LIFELAB",
-        text: `Hola ${nombre},\n\nGracias por registrarte en LIFELAB.\n\nPara verificar tu cuenta, haz clic en este enlace:\n${verifyUrl}\n\nEste enlace expira en 24 horas.\n\nSi no creaste esta cuenta, ignora este correo.\n\n- LIFELAB`,
-        html,
-      });
-      return;
-    } catch (err) {
-      console.error("Error enviando email de verificación:", err);
-    }
+  if (!t) {
+    console.log("\n========================================");
+    console.log("📧 VERIFICAR CORREO (modo desarrollo)");
+    console.log(`   Para: ${email}`);
+    console.log(`   Usuario: ${nombre}`);
+    console.log(`   Enlace: ${verifyUrl}`);
+    console.log("========================================\n");
+    return;
   }
-  console.log("\n========================================");
-  console.log("📧 VERIFICAR CORREO");
-  console.log(`   Para: ${email}`);
-  console.log(`   Usuario: ${nombre}`);
-  console.log(`   Enlace: ${verifyUrl}`);
-  console.log("========================================\n");
+
+  try {
+    await t.sendMail({
+      from: `"LIFELAB" <${process.env.EMAIL_FROM || "noreply@lifelab.com"}>`,
+      to: email,
+      subject: "Verifica tu correo — LIFELAB",
+      text: `Hola ${nombre},\n\nGracias por registrarte en LIFELAB.\n\nPara verificar tu cuenta, haz clic en este enlace:\n${verifyUrl}\n\nEste enlace expira en 24 horas.\n\nSi no creaste esta cuenta, ignora este correo.\n\n- LIFELAB`,
+      html,
+    });
+    console.log(`✅ Email de verificación enviado a ${email}`);
+  } catch (err) {
+    console.error("Error enviando email de verificación:", err);
+  }
 }
