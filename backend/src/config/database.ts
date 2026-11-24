@@ -251,6 +251,10 @@ export async function createDatabase() {
     )
   `);
   await queryWithRetry("CREATE INDEX IF NOT EXISTS idx_resultado_accesos_resultado ON resultado_accesos (resultado_id)");
+  // Serves the QR generation-limit window count (resultado + accion + recent created_at).
+  await queryWithRetry(
+    "CREATE INDEX IF NOT EXISTS idx_resultado_accesos_resultado_accion ON resultado_accesos (resultado_id, accion, created_at)"
+  );
 
   // One row per scan of a shared QR page; each ticket allows exactly one preview.
   await queryWithRetry(`

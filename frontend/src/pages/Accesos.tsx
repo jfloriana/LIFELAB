@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Eye, Download, Share2, Users, Activity, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw } from "lucide-react";
+import { Eye, Download, Share2, Users, Activity, ChevronLeft, ChevronRight, AlertTriangle, RefreshCw, Lock, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { getAccesos, getAccesosResumen, type AccesoItem, type AccesosResumen } from "@/services/api";
+import { getAccesos, getAccesosResumen, getQrBloqueados, desbloquearQr, type AccesoItem, type AccesosResumen, type QrBloqueado } from "@/services/api";
 
 const PAGE_SIZE = 25;
 
@@ -13,6 +13,8 @@ const accionLabels: Record<string, string> = {
   compartir: "Enlace compartido",
   descarga_compartida: "Descarga por enlace",
   previsualizacion_compartida: "Previsualización por QR",
+  qr_bloqueado: "QR bloqueado",
+  desbloqueo_qr: "QR desbloqueado",
 };
 
 const accionColors: Record<string, string> = {
@@ -21,6 +23,8 @@ const accionColors: Record<string, string> = {
   compartir: "bg-purple-500/20 text-purple-600 dark:text-purple-400",
   descarga_compartida: "bg-orange-500/20 text-orange-600 dark:text-orange-400",
   previsualizacion_compartida: "bg-teal-500/20 text-teal-600 dark:text-teal-400",
+  qr_bloqueado: "bg-red-500/20 text-red-600 dark:text-red-400",
+  desbloqueo_qr: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400",
 };
 
 const roleLabels: Record<string, string> = {
@@ -75,6 +79,11 @@ function SummaryCard({ icon: Icon, label, value, tone }: { icon: typeof Eye; lab
       </div>
     </div>
   );
+}
+
+function minutesLabel(seconds: number): string {
+  const m = Math.max(1, Math.ceil(seconds / 60));
+  return `${m} ${m === 1 ? "minuto" : "minutos"}`;
 }
 
 export default function Accesos() {
@@ -136,6 +145,46 @@ export default function Accesos() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Blocked QR panel: the countdown is derived from the moment the list was fetched.
+  const [bloqueados, setBloqueados] = useState<QrBloqueado[]>([]);
+  const [bloqueadosAt, setBloqueadosAt] = useState(() => Date.now());
+  const [tick, setTick] = useState(() => Date.now());
+  const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [unlocking, setUnlocking] = useState<number | null>(null);
+  const [unlockError, setUnlockError] = useState("");
+
+  const loadBloqueados = useCallback(async () => {
+    try {
+      const list = await getQrBloqueados();
+      setBloqueados(list);
+      setBloqueadosAt(Date.now());
+      setTick(Date.now());
+    } catch {
+      // The panel is optional: a failure just leaves it hidden or stale.
+    }
+  }, []);
+
+  useEffect(() => { loadBloqueados(); }, [loadBloqueados]);
+
+  useEffect(() => {
+    if (bloqueados.length === 0) return;
+    const id = setInterval(() => setTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [bloqueados.length]);
+
+  async function unlock(resultadoId: number) {
+    setUnlocking(resultadoId);
+    setUnlockError("");
+    try {
+      await desbloquearQr(resultadoId);
+      setConfirmId(null);
+      await Promise.all([loadBloqueados(), loadResumen(), load()]);
+    } catch (e) {
+      setUnlockError(e instanceof Error ? e.message : "No se pudo desbloquear");
+    }
+    setUnlocking(null);
+  }
+
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const from = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
   const to = Math.min(page * PAGE_SIZE, total);
@@ -182,6 +231,43 @@ export default function Accesos() {
               </li>
             ))}
           </ol>
+        </section>
+      )}
+
+      {bloqueados.length > 0 && (
+        <section aria-labelledby="qr-bloqueados" className="rounded-xl border border-red-300 bg-red-50 p-4 dark:border-red-500/20 dark:bg-red-500/10">
+          <h2 id="qr-bloqueados" className="text-sm font-semibold text-red-700 dark:text-red-400 mb-3 flex items-center gap-2">
+            <Lock size={16} aria-hidden="true" /> QR bloqueados
+          </h2>
+          {unlockError && <p role="alert" className="text-sm text-red-600 dark:text-red-400 mb-2">{unlockError}</p>}
+          <ul className="space-y-2">
+            {bloqueados.map((b) => {
+              const remaining = Math.max(0, b.reintento_en_segundos - Math.floor((tick - bloqueadosAt) / 1000));
+              return (
+                <li key={b.resultado_id} className="flex items-center gap-3 flex-wrap text-sm">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-gray-900 dark:text-white truncate">{b.titulo || `Resultado #${b.resultado_id}`}</p>
+                    <p className="text-xs text-gray-500 dark:text-white/40">
+                      {fullName(b.paciente_nombre, b.paciente_apellido) || "Paciente no disponible"} · {b.generados} códigos generados · se libera en {remaining > 0 ? minutesLabel(remaining) : "unos segundos"}
+                    </p>
+                  </div>
+                  {confirmId === b.resultado_id ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-gray-600 dark:text-white/60">¿Desbloquear este resultado?</span>
+                      <Button size="sm" onClick={() => unlock(b.resultado_id)} disabled={unlocking === b.resultado_id}>
+                        {unlocking === b.resultado_id ? "Desbloqueando..." : "Sí, desbloquear"}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setConfirmId(null)} disabled={unlocking === b.resultado_id}>Cancelar</Button>
+                    </div>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => { setUnlockError(""); setConfirmId(b.resultado_id); }}>
+                      <Unlock size={14} className="mr-1" /> Desbloquear
+                    </Button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </section>
       )}
 
