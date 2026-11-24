@@ -2,9 +2,25 @@ import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Download, Eye, FileText, Calendar, User, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { CaptureShield, PdfPreviewModal } from "@/components/PdfPreviewModal";
-import { getCompartido, previsualizarCompartido, PreviewConsumedError, QrUsedError, QR_USED_MESSAGE, type CompartidoInfo } from "@/services/api";
+import { getCompartido, descargarCompartido, previsualizarCompartido, PreviewConsumedError, QrUsedError, QR_USED_MESSAGE, type CompartidoInfo } from "@/services/api";
 
-const API_BASE = "/api";
+// The metadata GET is the one and only QR scan. Caching the in-flight promise per token keeps
+// React StrictMode's double effect (dev) from spending the QR twice.
+const scanRequests = new Map<string, Promise<CompartidoInfo>>();
+function scanOnce(token: string): Promise<CompartidoInfo> {
+  let pending = scanRequests.get(token);
+  if (!pending) {
+    pending = getCompartido(token);
+    scanRequests.set(token, pending);
+  }
+  return pending;
+}
+
+/** Same character whitelist as the server, so the saved name never carries path separators. */
+function safeDownloadName(name: unknown): string {
+  const cleaned = String(name ?? "resultado.pdf").replace(/[^\w.\- ]/g, "_").slice(0, 120);
+  return cleaned || "resultado.pdf";
+}
 
 export default function Compartido() {
   const { token } = useParams<{ token: string }>();
@@ -20,7 +36,7 @@ export default function Compartido() {
 
   useEffect(() => {
     if (!token) { setError("Token no válido"); setLoading(false); return; }
-    getCompartido(token)
+    scanOnce(token)
       .then((data) => setInfo(data))
       .catch((err) => {
         if (err instanceof QrUsedError) setQrUsed(true);
@@ -29,12 +45,34 @@ export default function Compartido() {
       .finally(() => setLoading(false));
   }, [token]);
 
-  const handleDownload = () => {
-    if (!token) return;
-    window.open(`${API_BASE}/compartido/${encodeURIComponent(token)}/download`, "_blank");
-  };
-
   const ticket = info?.ticket;
+
+  // One download per scan session: the button locks as soon as the request starts.
+  const [downloadState, setDownloadState] = useState<"idle" | "loading" | "done">("idle");
+  const [downloadError, setDownloadError] = useState("");
+
+  const handleDownload = async () => {
+    if (!token || !ticket || downloadState !== "idle") return;
+    setDownloadState("loading");
+    setDownloadError("");
+    try {
+      const blob = await descargarCompartido(token, ticket);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = safeDownloadName(info?.archivo_nombre);
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setDownloadState("done");
+    } catch (err) {
+      // A 410 means the single download was already spent; any other failure also stays locked
+      // because the server may have consumed the slot.
+      setDownloadError(err instanceof QrUsedError ? err.message : (err as Error).message || "No se pudo descargar el documento");
+      setDownloadState("done");
+    }
+  };
 
   const handlePreview = () => {
     if (!ticket || previewUsed) return;
@@ -156,11 +194,13 @@ export default function Compartido() {
               <p className="text-xs text-gray-400 dark:text-white/30 mb-2">Archivo: {info.archivo_nombre as string}</p>
               <button
                 onClick={handleDownload}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium text-sm hover:opacity-90 transition-opacity"
+                disabled={!ticket || downloadState !== "idle"}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download size={16} />
-                Descargar PDF
+                {downloadState === "loading" ? "Descargando..." : downloadState === "done" ? "Ya descargado" : "Descargar PDF"}
               </button>
+              {downloadError && <p role="alert" className="mt-1.5 text-xs text-center text-red-500">{downloadError}</p>}
               {ticket && (
                 <>
                   <button
@@ -182,7 +222,7 @@ export default function Compartido() {
           )}
 
           <p className="text-[10px] text-gray-400 dark:text-white/20 text-center pt-2">
-            Este enlace ha sido desactivado después de ser visualizado por seguridad.
+            Este código QR se desactivó al escanearlo por seguridad. Para ver el documento de nuevo, pide un código nuevo.
           </p>
         </CaptureShield>
 

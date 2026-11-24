@@ -180,6 +180,15 @@ describe("POST /api/resultados/:id/compartir generation limit", () => {
     expect((await compartir(staff, 3)).status).toBe(429);
   });
 
+  it("a new QR resets the scan flag together with the new token and expiry, parameterized", async () => {
+    const res = await compartir(staff);
+    expect(res.status).toBe(200);
+    const upd = mockDb.run.mock.calls.find(([sql]) => String(sql).includes("SET compartido_token"))!;
+    const text = String(upd[0]).replace(/\s+/g, " ");
+    expect(text).toContain("SET compartido_token = ?, compartido_expira = NOW() + INTERVAL '7 days', compartido_escaneado_at = NULL WHERE id = ?");
+    expect(upd[1]).toEqual([res.body.token, "3"]);
+  });
+
   it("uses parameterized SQL for the window count", async () => {
     await compartir(staff);
     const call = mockDb.exec.mock.calls.find(([sql]) => String(sql).includes("COUNT(*) AS generados"))!;
@@ -207,6 +216,14 @@ describe("GET /api/resultados/:id/compartir/estado", () => {
     shareActive = false;
     const res = await estado(staff);
     expect(res.body.activo).toBe(false);
+  });
+
+  it("activo requires an unscanned token: the estado SQL checks compartido_escaneado_at IS NULL", async () => {
+    await estado(staff);
+    const call = mockDb.exec.mock.calls.find(([sql]) => String(sql).includes("AS activo"))!;
+    const text = String(call[0]).replace(/\s+/g, " ");
+        expect(text).toContain("compartido_expira > NOW()) AND compartido_escaneado_at IS NULL) AS activo");
+    expect(call[1]).toEqual(["3"]);
   });
 
   it("reports blocked state with the retry time", async () => {

@@ -60,7 +60,7 @@ export function QRModal({ open, onClose, resultadoId }: QRModalProps) {
       currentToken.current = res.token;
       setLimitUntil(null);
       setGenerados(res.generados);
-      setNotice(auto ? "El código anterior fue usado. Se generó uno nuevo." : "");
+      setNotice(auto ? "El código anterior fue escaneado. Se generó uno nuevo." : "");
       setData(res);
     } catch (err) {
       if (!isOpen.current) return;
