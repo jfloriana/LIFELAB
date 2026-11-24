@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams, Link, useLocation } from "react-router-dom";
 import { CheckCircle, AlertCircle, Loader2, Mail, RefreshCw } from "lucide-react";
 import { verifyEmail, resendVerification } from "@/services/api";
+import { GrainGradient } from "@paper-design/shaders-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -42,11 +43,14 @@ export default function VerifyEmail() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <section className="relative min-h-screen overflow-hidden">
+      <GrainGradient speed={0.8} scale={1} rotation={0} offsetX={0} offsetY={0} softness={0.5} intensity={0.4} noise={0.2} shape="corners" frame={2854.5} colors={["#0891B2", "#22D3EE", "#67E8F9", "#0ea5e9"]} colorBack="#00000000" className="absolute inset-0" />
+      <div className="absolute inset-0 bg-gradient-to-br from-background/90 via-background/50 to-background/90" />
+    <div className="relative z-10 min-h-dvh flex items-center justify-center p-4">
       <div className="w-full max-w-md text-center">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-2xl mx-auto mb-4">L</div>
         <h1 className="text-3xl font-bold text-foreground dark:text-white mb-8">LIFELAB</h1>
-          <Card>
+          <Card className="rounded-2xl p-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl border border-gray-200/60 dark:border-white/5 shadow-[0_8px_40px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_40px_rgba(0,0,0,0.3)]">
           <CardContent className="px-6 py-8">
             {status === "loading" && (
               <div className="flex flex-col items-center gap-6 py-8">
@@ -144,5 +148,6 @@ export default function VerifyEmail() {
         </Card>
       </div>
     </div>
+    </section>
   );
 }
