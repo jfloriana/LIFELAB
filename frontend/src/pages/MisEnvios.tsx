@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Search, Download, FlaskConical, CheckCircle2, Loader, ChevronDown, ChevronUp, Circle } from "lucide-react";
+import { Search, Download, Eye, FlaskConical, CheckCircle2, Loader, ChevronDown, ChevronUp, Circle } from "lucide-react";
 import { getResultados } from "@/services/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { PdfPreviewModal } from "@/components/PdfPreviewModal";
 
 const estadoColors: Record<string, string> = {
   pendiente: "bg-amber-500/20 text-amber-600 dark:text-amber-400",
@@ -25,6 +26,7 @@ export default function MisEnvios() {
   const [selectedPaciente, setSelectedPaciente] = useState<{ nombre: string; apellido: string } | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [previewId, setPreviewId] = useState<number | null>(null);
   const [estadoFilter, setEstadoFilter] = useState<EstadoFilter>("todos");
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -187,6 +189,9 @@ export default function MisEnvios() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => setPreviewId(r.id as number)} className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-white/60 dark:hover:bg-white/10 transition-all" title="Previsualizar">
+                      <Eye size={16} />
+                    </button>
                     <button onClick={() => window.open(`/api/resultados/download/${r.id}`, "_blank")} className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10 transition-all" title="Descargar PDF">
                       <Download size={16} />
                     </button>
@@ -228,6 +233,8 @@ export default function MisEnvios() {
           })}
         </div>
       )}
+
+      <PdfPreviewModal open={previewId !== null} onClose={() => setPreviewId(null)} resultadoId={previewId} />
     </div>
   );
 }

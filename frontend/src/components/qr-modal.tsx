@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Download, RefreshCw } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { CaptureShield } from "@/components/PdfPreviewModal";
 import { compartirResultado, type CompartirResponse } from "@/services/api";
 
 interface QRModalProps {
@@ -68,12 +69,14 @@ export function QRModal({ open, onClose, resultadoId }: QRModalProps) {
         {error && <p className="text-danger text-sm">{error}</p>}
         {data && (
           <>
-            <div className="bg-surface rounded-xl p-4">
-              <canvas ref={canvasRef} className="rounded-lg" />
-            </div>
-            <p className="text-text-muted text-xs text-center break-all max-w-xs">
-              {data.url}
-            </p>
+            <CaptureShield watermark="LIFELAB · confidencial" className="flex flex-col items-center gap-4">
+              <div className="bg-surface rounded-xl p-4">
+                <canvas ref={canvasRef} className="rounded-lg" />
+              </div>
+              <p className="text-text-muted text-xs text-center break-all max-w-xs">
+                {data.url}
+              </p>
+            </CaptureShield>
             <div className="flex gap-3 mt-2">
               <Button variant="outline" size="sm" onClick={descargar}>
                 <Download size={16} className="mr-2" /> Descargar QR

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Download, FileText, Calendar, User, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { CaptureShield } from "@/components/PdfPreviewModal";
 import { useToast } from "@/components/ui/use-toast";
 
 const API_BASE = "/api";
@@ -69,7 +70,7 @@ export default function Compartido() {
           <p className="text-sm text-gray-500 dark:text-white/40 mt-1">Compartido por LIFELAB</p>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-white/5 dark:bg-white/[0.02] space-y-4">
+        <CaptureShield watermark="LIFELAB · confidencial" className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-white/5 dark:bg-white/[0.02] space-y-4 overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-white/30">Información del paciente</span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-500/20 text-green-600 dark:text-green-400">
@@ -127,7 +128,7 @@ export default function Compartido() {
           <p className="text-[10px] text-gray-400 dark:text-white/20 text-center pt-2">
             Este enlace ha sido desactivado después de ser visualizado por seguridad.
           </p>
-        </div>
+        </CaptureShield>
 
         <div className="text-center mt-8">
           <a href="https://lifelab-cyan.vercel.app" className="text-xs text-gray-400 dark:text-white/30 hover:text-primary transition-colors">
