@@ -154,6 +154,45 @@ export async function fetchResultadoBlob(id: number): Promise<Blob> {
   return res.blob();
 }
 
+export const PREVIEW_CONSUMED_MESSAGE =
+  "Ya previsualizaste este documento. Vuelve a escanear el código QR para verlo de nuevo.";
+
+/** Error raised when a single-use QR preview ticket was already used or has expired. */
+export class PreviewConsumedError extends Error {
+  codigo = "PREVIEW_CONSUMED" as const;
+  status = 410;
+  constructor(message = PREVIEW_CONSUMED_MESSAGE) {
+    super(message);
+    this.name = "PreviewConsumedError";
+  }
+}
+
+export type CompartidoInfo = Record<string, unknown> & { ticket?: string; preview_ttl_seconds?: number };
+
+/** Public metadata of a shared result. Each call counts as one QR "scan" and issues a preview ticket. */
+export async function getCompartido(token: string): Promise<CompartidoInfo> {
+  const res = await fetch(`${API_BASE}/compartido/${encodeURIComponent(token)}`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Resultado no encontrado");
+  return data as CompartidoInfo;
+}
+
+/** Consumes the single-use preview ticket and returns the PDF. Throws PreviewConsumedError on 410. */
+export async function previsualizarCompartido(token: string, ticket: string): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/compartido/${encodeURIComponent(token)}/previsualizar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticket }),
+  });
+  if (!res.ok) {
+    let data: { error?: string; codigo?: string } = {};
+    try { data = await res.json(); } catch { /* non-JSON error body */ }
+    if (res.status === 410 || data.codigo === "PREVIEW_CONSUMED") throw new PreviewConsumedError();
+    throw new Error(data.error || "No se pudo cargar el documento");
+  }
+  return res.blob();
+}
+
 export interface CompartirResponse {
   mensaje: string;
   token: string;
@@ -235,3 +274,58 @@ export async function updateResena(id: number, data: Record<string, unknown>) {
 }
 
 
+
+export type AccesoAccion = "previsualizar" | "descarga" | "compartir" | "descarga_compartida" | "previsualizacion_compartida";
+
+export interface AccesoItem {
+  id: number;
+  resultado_id: number;
+  accion: AccesoAccion;
+  role: string | null;
+  ip: string | null;
+  user_agent: string | null;
+  created_at: string;
+  usuario: { nombre: string; apellido: string; email: string } | null;
+  resultado: { titulo: string; paciente_nombre: string | null; paciente_apellido: string | null } | null;
+}
+
+export interface AccesosPage {
+  items: AccesoItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AccesosResumen {
+  ultimos_7_dias: Record<AccesoAccion, number>;
+  ultimos_30_dias: Record<AccesoAccion, number>;
+  total_30_dias: number;
+  usuarios_unicos_30_dias: number;
+  mas_consultados: {
+    resultado_id: number;
+    titulo: string | null;
+    paciente_nombre: string | null;
+    paciente_apellido: string | null;
+    total: number;
+  }[];
+}
+
+export async function getAccesos(params: {
+  accion?: string;
+  q?: string;
+  desde?: string;
+  hasta?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") qs.set(key, String(value));
+  }
+  const suffix = qs.toString();
+  return request<AccesosPage>(`/accesos${suffix ? `?${suffix}` : ""}`);
+}
+
+export async function getAccesosResumen() {
+  return request<AccesosResumen>("/accesos/resumen");
+}

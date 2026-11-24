@@ -252,6 +252,20 @@ export async function createDatabase() {
   `);
   await queryWithRetry("CREATE INDEX IF NOT EXISTS idx_resultado_accesos_resultado ON resultado_accesos (resultado_id)");
 
+  // One row per scan of a shared QR page; each ticket allows exactly one preview.
+  await queryWithRetry(`
+    CREATE TABLE IF NOT EXISTS compartido_vistas (
+      id SERIAL PRIMARY KEY,
+      ticket TEXT UNIQUE NOT NULL,
+      resultado_id INTEGER NOT NULL,
+      token TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      expires_at TIMESTAMP NOT NULL,
+      used_at TIMESTAMP
+    )
+  `);
+  await queryWithRetry("CREATE INDEX IF NOT EXISTS idx_compartido_vistas_ticket ON compartido_vistas (ticket)");
+
   const { rows: existing } = await queryWithRetry("SELECT COUNT(*) as cnt FROM users");
   if (Number(existing[0]?.cnt) === 0) {
     // No credentials live in source: the first admin is created only from env vars.

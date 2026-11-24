@@ -1,26 +1,25 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { Download, FileText, Calendar, User, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
-import { CaptureShield } from "@/components/PdfPreviewModal";
-import { useToast } from "@/components/ui/use-toast";
+import { Download, Eye, FileText, Calendar, User, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
+import { CaptureShield, PdfPreviewModal } from "@/components/PdfPreviewModal";
+import { getCompartido, previsualizarCompartido, PreviewConsumedError, type CompartidoInfo } from "@/services/api";
 
 const API_BASE = "/api";
 
 export default function Compartido() {
   const { token } = useParams<{ token: string }>();
-  const { toast } = useToast();
-  const [info, setInfo] = useState<Record<string, unknown> | null>(null);
+  const [info, setInfo] = useState<CompartidoInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
+  // One preview per page load: once started it never re-enables, even if the modal is closed.
+  const [previewUsed, setPreviewUsed] = useState(false);
+  const previewRequest = useRef<Promise<Blob> | null>(null);
 
   useEffect(() => {
     if (!token) { setError("Token no válido"); setLoading(false); return; }
-    fetch(`${API_BASE}/compartido/${encodeURIComponent(token)}`)
-      .then((r) => r.json().then((d) => ({ status: r.status, data: d })))
-      .then(({ status, data }) => {
-        if (status !== 200) throw new Error(data.error || "Resultado no encontrado");
-        setInfo(data);
-      })
+    getCompartido(token)
+      .then((data) => setInfo(data))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [token]);
@@ -28,6 +27,27 @@ export default function Compartido() {
   const handleDownload = () => {
     if (!token) return;
     window.open(`${API_BASE}/compartido/${encodeURIComponent(token)}/download`, "_blank");
+  };
+
+  const ticket = info?.ticket;
+
+  const handlePreview = () => {
+    if (!ticket || previewUsed) return;
+    setPreviewUsed(true);
+    setPreviewOpen(true);
+  };
+
+  // The request is memoized so StrictMode double effects or in-modal retries never
+  // spend the single-use ticket twice; only a non-consumed failure clears the cache.
+  const loadPreview = () => {
+    if (!token || !ticket) return Promise.reject(new PreviewConsumedError());
+    if (!previewRequest.current) {
+      previewRequest.current = previsualizarCompartido(token, ticket).catch((err) => {
+        if (!(err instanceof PreviewConsumedError)) previewRequest.current = null;
+        throw err;
+      });
+    }
+    return previewRequest.current;
   };
 
   if (loading) {
@@ -56,7 +76,7 @@ export default function Compartido() {
     );
   }
 
-  const fecha = info?.cita_fecha ? new Date((info.cita_fecha as string) + "T12:00:00") : null;
+  const fecha = info?.cita_fecha ? new Date(String(info.cita_fecha).slice(0, 10) + "T12:00:00") : null;
   const created = info?.created_at ? new Date(info.created_at as string) : null;
 
   return (
@@ -122,6 +142,23 @@ export default function Compartido() {
                 <Download size={16} />
                 Descargar PDF
               </button>
+              {ticket && (
+                <>
+                  <button
+                    onClick={handlePreview}
+                    disabled={previewUsed}
+                    className="mt-2 w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-300 dark:border-white/10 text-gray-700 dark:text-white/80 font-medium text-sm hover:bg-gray-100 dark:hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                  >
+                    <Eye size={16} />
+                    {previewUsed ? "Ya previsualizado" : "Previsualizar"}
+                  </button>
+                  <p className="mt-1.5 text-[10px] text-gray-400 dark:text-white/30 text-center">
+                    {previewUsed
+                      ? "Vuelve a escanear el código QR para verlo de nuevo"
+                      : "Puedes previsualizarlo una sola vez por escaneo"}
+                  </p>
+                </>
+              )}
             </div>
           )}
 
@@ -129,6 +166,15 @@ export default function Compartido() {
             Este enlace ha sido desactivado después de ser visualizado por seguridad.
           </p>
         </CaptureShield>
+
+        <PdfPreviewModal
+          open={previewOpen}
+          onClose={() => setPreviewOpen(false)}
+          resultadoId={typeof info?.id === "number" ? info.id : null}
+          titulo={info?.titulo as string | undefined}
+          loadBlob={loadPreview}
+          traceId={ticket}
+        />
 
         <div className="text-center mt-8">
           <a href="https://lifelab-cyan.vercel.app" className="text-xs text-gray-400 dark:text-white/30 hover:text-primary transition-colors">

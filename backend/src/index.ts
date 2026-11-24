@@ -15,6 +15,7 @@ import reportesRoutes from "./routes/reportes";
 import analisisRoutes from "./routes/analisis";
 import resenasRoutes from "./routes/resenas";
 import compartidoRoutes from "./routes/compartido";
+import accesosRoutes from "./routes/accesos";
 import { isEmailConfigured } from "./utils/email";
 import type { Request, Response, NextFunction } from "express";
 
@@ -78,6 +79,7 @@ app.use("/api/reportes", reportesRoutes);
 app.use("/api/analisis", analisisRoutes);
 app.use("/api/resenas", resenasRoutes);
 app.use("/api/compartido", publicLimiter, compartidoRoutes);
+app.use("/api/accesos", accesosRoutes);
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   const message = err?.message || "";

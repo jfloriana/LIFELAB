@@ -18,6 +18,7 @@ import Users from "@/pages/Users";
 import Perfil from "@/pages/Perfil";
 import Resenas from "@/pages/Resenas";
 import Reportes from "@/pages/Reportes";
+import Accesos from "@/pages/Accesos";
 import AnalisisPendientes from "@/pages/AnalisisPendientes";
 import MisEnvios from "@/pages/MisEnvios";
 import Compartido from "@/pages/Compartido";
@@ -49,6 +50,7 @@ export default function App() {
               <Route path="/mis-envios" element={<ProtectedRoute roles={["bioanalista"]}><MisEnvios /></ProtectedRoute>} />
               <Route path="/resenas" element={<ProtectedRoute roles={["paciente", "admin"]}><Resenas /></ProtectedRoute>} />
               <Route path="/reportes" element={<ProtectedRoute roles={["admin", "recepcionista", "bioanalista"]}><Reportes /></ProtectedRoute>} />
+              <Route path="/accesos" element={<ProtectedRoute roles={["admin"]}><Accesos /></ProtectedRoute>} />
             </Route>
           </Route>
 
