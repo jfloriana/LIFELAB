@@ -235,3 +235,58 @@ export async function updateResena(id: number, data: Record<string, unknown>) {
 }
 
 
+
+export type AccesoAccion = "previsualizar" | "descarga" | "compartir" | "descarga_compartida";
+
+export interface AccesoItem {
+  id: number;
+  resultado_id: number;
+  accion: AccesoAccion;
+  role: string | null;
+  ip: string | null;
+  user_agent: string | null;
+  created_at: string;
+  usuario: { nombre: string; apellido: string; email: string } | null;
+  resultado: { titulo: string; paciente_nombre: string | null; paciente_apellido: string | null } | null;
+}
+
+export interface AccesosPage {
+  items: AccesoItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface AccesosResumen {
+  ultimos_7_dias: Record<AccesoAccion, number>;
+  ultimos_30_dias: Record<AccesoAccion, number>;
+  total_30_dias: number;
+  usuarios_unicos_30_dias: number;
+  mas_consultados: {
+    resultado_id: number;
+    titulo: string | null;
+    paciente_nombre: string | null;
+    paciente_apellido: string | null;
+    total: number;
+  }[];
+}
+
+export async function getAccesos(params: {
+  accion?: string;
+  q?: string;
+  desde?: string;
+  hasta?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") qs.set(key, String(value));
+  }
+  const suffix = qs.toString();
+  return request<AccesosPage>(`/accesos${suffix ? `?${suffix}` : ""}`);
+}
+
+export async function getAccesosResumen() {
+  return request<AccesosResumen>("/accesos/resumen");
+}
