@@ -26,20 +26,69 @@ function isValidPdf(filePath: string): boolean {
 
 // Best-effort access log: never throws and never affects the original request.
 // Fire-and-forget on purpose so a slow or failing DB cannot delay the response.
+function insertAcceso(req: Request, resultadoId: number, accion: string): Promise<unknown> {
+  const ua = req.get("user-agent");
+  return Promise.resolve(
+    getDatabase().run(
+      "INSERT INTO resultado_accesos (resultado_id, user_id, role, accion, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?)",
+      [resultadoId, req.user?.userId ?? null, req.user?.role ?? null, accion, req.ip ?? null, ua ? ua.slice(0, 300) : null]
+    )
+  );
+}
+
 export function logAcceso(req: Request, resultadoId: number, accion: string): void {
   try {
-    const ua = req.get("user-agent");
-    Promise.resolve(
-      getDatabase().run(
-        "INSERT INTO resultado_accesos (resultado_id, user_id, role, accion, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?)",
-        [resultadoId, req.user?.userId ?? null, req.user?.role ?? null, accion, req.ip ?? null, ua ? ua.slice(0, 300) : null]
-      )
-    ).catch((err: unknown) => {
+    insertAcceso(req, resultadoId, accion).catch((err: unknown) => {
       console.error("No se pudo registrar el acceso al resultado:", (err as Error)?.message);
     });
   } catch (err) {
     console.error("No se pudo registrar el acceso al resultado:", (err as Error)?.message);
   }
+}
+
+// Awaited variant for rows that later logic counts (QR generation limit): the insert is
+// finished before the response, so a rapid follow-up request always sees it. Never throws.
+async function logAccesoAwait(req: Request, resultadoId: number, accion: string): Promise<boolean> {
+  try {
+    await insertAcceso(req, resultadoId, accion);
+    return true;
+  } catch (err) {
+    console.error("No se pudo registrar el acceso al resultado:", (err as Error)?.message);
+    return false;
+  }
+}
+
+/** Max QR codes (share tokens) that can be generated per resultado inside the window. */
+export const QR_LIMIT = 5;
+/** Length of the sliding generation window, in hours. */
+export const QR_WINDOW_HOURS = 2;
+
+/**
+ * SQL counting 'compartir' rows of one resultado inside the window and after the most recent
+ * 'desbloqueo_qr' (admin unlock). Params: [resultadoId, resultadoId]. The constants are
+ * trusted numbers, never user input.
+ */
+export const QR_WINDOW_SQL = `SELECT COUNT(*) AS generados,
+       EXTRACT(EPOCH FROM (MIN(created_at) + INTERVAL '${QR_WINDOW_HOURS} hours' - NOW())) AS reintento
+  FROM resultado_accesos
+  WHERE resultado_id = ? AND accion = 'compartir'
+    AND created_at > NOW() - INTERVAL '${QR_WINDOW_HOURS} hours'
+    AND created_at > COALESCE(
+      (SELECT MAX(created_at) FROM resultado_accesos WHERE resultado_id = ? AND accion = 'desbloqueo_qr'),
+      '-infinity'::timestamp)`;
+
+/** Seconds (>= 1) until a blocked resultado can generate again; null when not blocked. */
+export function retrySeconds(generados: number, rawSeconds: unknown): number | null {
+  if (generados < QR_LIMIT) return null;
+  const secs = Math.ceil(Number(rawSeconds));
+  return Number.isFinite(secs) && secs > 0 ? secs : 1;
+}
+
+async function getQrWindow(resultadoId: number): Promise<{ generados: number; reintento: number | null }> {
+  const res = await getDatabase().exec(QR_WINDOW_SQL, [resultadoId, resultadoId]);
+  const row = res.length && res[0].values.length ? res[0].values[0] : null;
+  const generados = row ? Number(row[0]) || 0 : 0;
+  return { generados, reintento: retrySeconds(generados, row ? row[1] : null) };
 }
 
 const router = Router();
@@ -261,6 +310,28 @@ router.post("/:id/compartir", validateId(), async (req, res) => {
     res.status(403).json({ error: "No autorizado" }); return;
   }
 
+  // Generation limit: same for every role (admin included); only an admin unlock resets it.
+  let win: { generados: number; reintento: number | null };
+  try {
+    win = await getQrWindow(Number(r.id));
+  } catch (err) {
+    console.error("No se pudo comprobar el límite de QR:", (err as Error)?.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+    return;
+  }
+  if (win.generados >= QR_LIMIT) {
+    const reintento = win.reintento ?? 1;
+    logAcceso(req, Number(r.id), "qr_bloqueado");
+    res.status(429).json({
+      error: `Alcanzaste el límite de códigos QR. Inténtalo de nuevo en ${Math.max(1, Math.ceil(reintento / 60))} minutos.`,
+      codigo: "QR_LIMIT",
+      reintento_en_segundos: reintento,
+      limite: QR_LIMIT,
+      ventana_horas: QR_WINDOW_HOURS,
+    });
+    return;
+  }
+
   // Always generate a new token (expire old one if exists)
   const token = crypto.randomUUID();
   await db.run(
@@ -269,8 +340,73 @@ router.post("/:id/compartir", validateId(), async (req, res) => {
   );
   const frontendUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get("host")}`;
   const shareUrl = `${frontendUrl}/compartido/${token}`;
-  logAcceso(req, Number(r.id), "compartir");
-  res.json({ token, url: shareUrl });
+  await logAccesoAwait(req, Number(r.id), "compartir");
+  const generados = win.generados + 1;
+  res.json({ token, url: shareUrl, generados, restantes: Math.max(0, QR_LIMIT - generados), limite: QR_LIMIT, ventana_horas: QR_WINDOW_HOURS });
+});
+
+router.get("/:id/compartir/estado", validateId(), async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) { res.status(400).json({ error: errors.array()[0].msg }); return; }
+  const db = getDatabase();
+  const result = await db.exec(
+    `SELECT id, paciente_id,
+            (compartido_token IS NOT NULL AND (compartido_expira IS NULL OR compartido_expira > NOW())) AS activo
+     FROM resultados WHERE id = ?`,
+    [req.params!.id]
+  );
+  if (!result.length || !result[0].values.length) {
+    res.status(404).json({ error: "Resultado no encontrado" }); return;
+  }
+  const cols = result[0].columns;
+  const row = result[0].values[0];
+  const r: Record<string, unknown> = {};
+  cols.forEach((col: string, i: number) => { r[col] = row[i]; });
+
+  const isStaff = ["admin", "recepcionista", "bioanalista"].includes(req.user!.role);
+  let isOwner = false;
+  if (!isStaff && r.paciente_id) {
+    const ownerRes = await db.exec("SELECT user_id FROM pacientes WHERE id = ?", [r.paciente_id]);
+    isOwner = ownerRes.length > 0 && ownerRes[0].values[0][0] === req.user!.userId;
+  }
+  if (!isStaff && !isOwner) {
+    res.status(403).json({ error: "No autorizado" }); return;
+  }
+
+  try {
+    const win = await getQrWindow(Number(r.id));
+    res.set("Cache-Control", "no-store");
+    res.json({
+      activo: r.activo === true || r.activo === "t",
+      generados: win.generados,
+      restantes: Math.max(0, QR_LIMIT - win.generados),
+      limite: QR_LIMIT,
+      bloqueado: win.generados >= QR_LIMIT,
+      reintento_en_segundos: win.reintento,
+    });
+  } catch (err) {
+    console.error("No se pudo consultar el estado del QR:", (err as Error)?.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
+// Admin-only manual unlock: a 'desbloqueo_qr' row resets the counter of this resultado only.
+router.post("/:id/qr/desbloquear", validateId(), async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) { res.status(400).json({ error: errors.array()[0].msg }); return; }
+  if (req.user!.role !== "admin") {
+    res.status(403).json({ error: "No autorizado" }); return;
+  }
+  const db = getDatabase();
+  const exists = await db.exec("SELECT id FROM resultados WHERE id = ?", [req.params!.id]);
+  if (!exists.length || !exists[0].values.length) {
+    res.status(404).json({ error: "Resultado no encontrado" }); return;
+  }
+  const ok = await logAccesoAwait(req, Number(exists[0].values[0][0]), "desbloqueo_qr");
+  if (!ok) {
+    res.status(500).json({ error: "No se pudo registrar el desbloqueo" }); return;
+  }
+  res.json({ ok: true });
 });
 
 router.get("/:id/accesos", validateId(), async (req, res) => {

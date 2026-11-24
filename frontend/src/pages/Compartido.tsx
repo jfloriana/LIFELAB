@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Download, Eye, FileText, Calendar, User, Clock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { CaptureShield, PdfPreviewModal } from "@/components/PdfPreviewModal";
-import { getCompartido, previsualizarCompartido, PreviewConsumedError, type CompartidoInfo } from "@/services/api";
+import { getCompartido, previsualizarCompartido, PreviewConsumedError, QrUsedError, QR_USED_MESSAGE, type CompartidoInfo } from "@/services/api";
 
 const API_BASE = "/api";
 
@@ -11,6 +11,8 @@ export default function Compartido() {
   const [info, setInfo] = useState<CompartidoInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // The QR was already consumed by a previous preview/download (410 QR_USED).
+  const [qrUsed, setQrUsed] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   // One preview per page load: once started it never re-enables, even if the modal is closed.
   const [previewUsed, setPreviewUsed] = useState(false);
@@ -20,7 +22,10 @@ export default function Compartido() {
     if (!token) { setError("Token no válido"); setLoading(false); return; }
     getCompartido(token)
       .then((data) => setInfo(data))
-      .catch((err) => setError(err.message))
+      .catch((err) => {
+        if (err instanceof QrUsedError) setQrUsed(true);
+        else setError(err.message);
+      })
       .finally(() => setLoading(false));
   }, [token]);
 
@@ -61,6 +66,20 @@ export default function Compartido() {
     );
   }
 
+  if (qrUsed) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0B] flex items-center justify-center p-4">
+        <div className="max-w-md w-full text-center">
+          <div className="w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-500/10 flex items-center justify-center mx-auto">
+            <AlertCircle size={32} className="text-amber-500" />
+          </div>
+          <h1 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">Código ya usado</h1>
+          <p role="alert" className="mt-2 text-sm text-gray-500 dark:text-white/40">{QR_USED_MESSAGE}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-[#0A0A0B] flex items-center justify-center p-4">
@@ -70,7 +89,7 @@ export default function Compartido() {
           </div>
           <h1 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">Resultado no disponible</h1>
           <p className="mt-2 text-sm text-gray-500 dark:text-white/40">{error}</p>
-          <p className="mt-1 text-xs text-gray-400 dark:text-white/30">El enlace puede haber expirado o no ser válido.</p>
+          <p className="mt-1 text-xs text-gray-400 dark:text-white/30">Este código ya no es válido: pudo haber sido usado, reemplazado por uno nuevo o haber expirado. Pide uno nuevo.</p>
         </div>
       </div>
     );

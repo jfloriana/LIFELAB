@@ -15,6 +15,7 @@ const compartidoLimiter = rateLimit({
 
 const PREVIEW_TTL_SECONDS = 600;
 const TICKET_PATTERN = /^[A-Za-z0-9-]{8,100}$/;
+const QR_USED_MESSAGE = "Este código ya fue usado. Pide uno nuevo.";
 const PREVIEW_CONSUMED_MESSAGE = "Ya previsualizaste este documento. Vuelve a escanear el código QR para verlo de nuevo.";
 
 /** Keeps the header value free of quotes, control characters and path separators. */
@@ -45,6 +46,17 @@ async function expireToken(token: string) {
   await db.run("UPDATE resultados SET compartido_expira = NOW() WHERE compartido_token = ?", [token]);
 }
 
+// Best-effort: any failure is logged and treated as "unknown" so callers fall back to a plain 404.
+async function isKnownToken(token: string): Promise<boolean> {
+  try {
+    const known = await getDatabase().exec("SELECT id FROM resultados WHERE compartido_token = ? LIMIT 1", [token]);
+    return known.length > 0 && known[0].values.length > 0;
+  } catch (err) {
+    console.error("No se pudo comprobar el estado del token:", (err as Error)?.message);
+    return false;
+  }
+}
+
 router.get("/:token", compartidoLimiter, async (req, res) => {
   const db = getDatabase();
   const result = await db.exec(
@@ -59,6 +71,12 @@ router.get("/:token", compartidoLimiter, async (req, res) => {
     [req.params.token as string]
   );
   if (!result.length || !result[0].values.length) {
+    // A token that still exists but is expired was already used (or aged out): tell it apart
+    // from a token that never existed.
+    if (await isKnownToken(req.params.token as string)) {
+      res.status(410).json({ error: QR_USED_MESSAGE, codigo: "QR_USED" });
+      return;
+    }
     res.status(404).json({ error: "Resultado no encontrado o enlace expirado" });
     return;
   }
@@ -92,6 +110,12 @@ router.post("/:token/previsualizar", compartidoLimiter, async (req, res) => {
     [token]
   );
   if (!result.length || !result[0].values.length) {
+    // The first preview expires the token, so a repeated/late request for a known token
+    // is "already consumed", not "not found".
+    if (await isKnownToken(token)) {
+      res.status(410).json({ error: PREVIEW_CONSUMED_MESSAGE, codigo: "PREVIEW_CONSUMED" });
+      return;
+    }
     res.status(404).json({ error: "Resultado no encontrado o enlace expirado" });
     return;
   }
@@ -126,6 +150,14 @@ router.post("/:token/previsualizar", compartidoLimiter, async (req, res) => {
       res.status(404).json({ error: "Archivo no encontrado" });
       return;
     }
+  }
+
+  // The preview consumes the QR: expire the share token so it cannot be scanned again.
+  // A failure here must never block the response; it is only logged.
+  try {
+    await expireToken(token);
+  } catch (err) {
+    console.error("No se pudo expirar el token tras la previsualización:", (err as Error)?.message);
   }
 
   logAcceso(req, Number(r.id), "previsualizacion_compartida");

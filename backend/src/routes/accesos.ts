@@ -3,7 +3,17 @@ import { query, validationResult } from "express-validator";
 import { authMiddleware } from "../middleware/auth";
 import { getDatabase } from "../config/database";
 
-export const ACCIONES = ["previsualizar", "descarga", "compartir", "descarga_compartida", "previsualizacion_compartida"] as const;
+import { QR_LIMIT, QR_WINDOW_HOURS } from "./resultados";
+
+export const ACCIONES = [
+  "previsualizar",
+  "descarga",
+  "compartir",
+  "descarga_compartida",
+  "previsualizacion_compartida",
+  "qr_bloqueado",
+  "desbloqueo_qr",
+] as const;
 
 const router = Router();
 router.use(authMiddleware);
@@ -139,6 +149,46 @@ router.get(
     }
   }
 );
+
+// Resultados whose QR generation is currently blocked (limit reached in the active window).
+router.get("/qr-bloqueados", async (_req, res) => {
+  try {
+    const db = getDatabase();
+    const rows = toRows(
+      await db.exec(
+        `SELECT a.resultado_id, r.titulo, pu.nombre AS paciente_nombre, pu.apellido AS paciente_apellido,
+                COUNT(*) AS generados,
+                EXTRACT(EPOCH FROM (MIN(a.created_at) + INTERVAL '${QR_WINDOW_HOURS} hours' - NOW())) AS reintento
+         FROM resultado_accesos a
+         LEFT JOIN resultados r ON r.id = a.resultado_id
+         LEFT JOIN pacientes p ON p.id = r.paciente_id
+         LEFT JOIN users pu ON pu.id = p.user_id
+         WHERE a.accion = 'compartir'
+           AND a.created_at > NOW() - INTERVAL '${QR_WINDOW_HOURS} hours'
+           AND a.created_at > COALESCE(
+             (SELECT MAX(d.created_at) FROM resultado_accesos d WHERE d.resultado_id = a.resultado_id AND d.accion = 'desbloqueo_qr'),
+             '-infinity'::timestamp)
+         GROUP BY a.resultado_id, r.titulo, pu.nombre, pu.apellido
+         HAVING COUNT(*) >= ${QR_LIMIT}
+         ORDER BY reintento DESC, a.resultado_id DESC
+         LIMIT 100`
+      )
+    );
+    res.json(
+      rows.map((row) => ({
+        resultado_id: row.resultado_id,
+        titulo: row.titulo,
+        paciente_nombre: row.paciente_nombre,
+        paciente_apellido: row.paciente_apellido,
+        generados: Number(row.generados),
+        reintento_en_segundos: Math.max(1, Math.ceil(Number(row.reintento)) || 1),
+      }))
+    );
+  } catch (err) {
+    console.error("Error al listar QR bloqueados:", (err as Error)?.message);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
 
 function emptyCounts(): Record<string, number> {
   return Object.fromEntries(ACCIONES.map((a) => [a, 0]));

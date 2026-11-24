@@ -10,11 +10,13 @@ import { buildApp, mockDb, onExec, resetDb, table } from "./helpers";
 
 const TOKEN = "secret-share-token";
 const PDF = Buffer.from("%PDF-1.4 fake");
+const QR_USED_MSG = "Este código ya fue usado. Pide uno nuevo.";
 const CONSUMED_MSG = "Ya previsualizaste este documento. Vuelve a escanear el código QR para verlo de nuevo.";
 
 type Ticket = { token: string; resultadoId: number; used: boolean; expired: boolean };
 let tickets: Map<string, Ticket>;
 let shareValid: boolean;
+let tokenKnown: boolean;
 let fileName: string;
 
 // Fresh router per test so the module-level rate limiter never accumulates across tests.
@@ -41,14 +43,21 @@ beforeEach(() => {
   shareValid = true;
   fileName = 'r"x.pdf';
 
+  tokenKnown = true;
   mockDb.run.mockImplementation(async (sql, params) => {
     if (String(sql).includes("INSERT INTO compartido_vistas")) {
       const [ticket, resultadoId, token] = params as [string, number, string];
       tickets.set(ticket, { token, resultadoId, used: false, expired: false });
     }
+    if (String(sql).includes("compartido_expira = NOW()")) {
+      shareValid = false;
+    }
   });
 
   onExec((sql, params) => {
+    if (sql.startsWith("SELECT id FROM resultados WHERE compartido_token")) {
+      return tokenKnown ? table(["id"], [3]) : [];
+    }
     if (sql.includes("FROM resultados r")) {
       return shareValid
         ? table(["id", "titulo", "tipo", "archivo_nombre"], [3, "Hemograma", "laboratorio", "r.pdf"])
@@ -107,8 +116,9 @@ describe("GET /api/compartido/:token ticket", () => {
     expect(res.body.ticket).toBeUndefined();
   });
 
-  it("404 and no ticket for an unknown or expired share token", async () => {
+  it("404 and no ticket for an unknown share token", async () => {
     shareValid = false;
+    tokenKnown = false;
     const res = await scan(await app());
     expect(res.status).toBe(404);
     expect(ticketInserts()).toHaveLength(0);
@@ -148,12 +158,14 @@ describe("POST /api/compartido/:token/previsualizar", () => {
     expect(logInserts()).toHaveLength(1);
   });
 
-  it("re-scanning grants a new preview", async () => {
+  it("re-scanning grants a new preview while the QR is not consumed", async () => {
     const a = await app();
     const first = (await scan(a)).body.ticket;
-    expect((await request(a).post(`/api/compartido/${TOKEN}/previsualizar`).send({ ticket: first })).status).toBe(200);
     const second = (await scan(a)).body.ticket;
-    expect((await request(a).post(`/api/compartido/${TOKEN}/previsualizar`).send({ ticket: second })).status).toBe(200);
+    expect(second).not.toBe(first);
+    // Each scan gets its own ticket; the first preview then consumes the whole QR.
+    expect((await request(a).post(`/api/compartido/${TOKEN}/previsualizar`).send({ ticket: first })).status).toBe(200);
+    expect((await scan(a)).status).toBe(410);
   });
 
   it("unknown ticket is 410", async () => {
@@ -180,8 +192,9 @@ describe("POST /api/compartido/:token/previsualizar", () => {
     expect(res.status).toBe(410);
   });
 
-  it("unknown or expired share token is 404 and never touches tickets", async () => {
+  it("unknown share token is 404 and never touches tickets", async () => {
     shareValid = false;
+    tokenKnown = false;
     const res = await request(await app())
       .post(`/api/compartido/${TOKEN}/previsualizar`)
       .send({ ticket: "00000000-0000-4000-8000-000000000000" });
@@ -216,15 +229,58 @@ describe("POST /api/compartido/:token/previsualizar", () => {
     expect(ticketReads).toHaveLength(0);
   });
 
-  it("does not expire the share token (download keeps working)", async () => {
+  it("a successful preview consumes the QR: the share token is expired and a re-scan is 410 QR_USED", async () => {
     const a = await app();
     const { ticket } = (await scan(a)).body;
-    await request(a).post(`/api/compartido/${TOKEN}/previsualizar`).send({ ticket });
+    const res = await request(a).post(`/api/compartido/${TOKEN}/previsualizar`).send({ ticket });
+    expect(res.status).toBe(200);
+    const expiring = mockDb.run.mock.calls.filter(([sql]) => String(sql).includes("compartido_expira = NOW()"));
+    expect(expiring).toHaveLength(1);
+    expect(expiring[0][1]).toEqual([TOKEN]);
+
+    const again = await scan(a);
+    expect(again.status).toBe(410);
+    expect(again.body).toEqual({ error: QR_USED_MSG, codigo: "QR_USED" });
+    expect(ticketInserts()).toHaveLength(1); // no new ticket for a used QR
+    expect((await request(a).get(`/api/compartido/${TOKEN}/download`)).status).toBe(404);
+  });
+
+  it("scanning without previewing does not consume the QR", async () => {
+    const a = await app();
+    await scan(a);
+    await scan(a);
     const expiring = mockDb.run.mock.calls.filter(([sql]) => String(sql).includes("compartido_expira = NOW()"));
     expect(expiring).toHaveLength(0);
     expect((await scan(a)).status).toBe(200);
-    const dl = await request(a).get(`/api/compartido/${TOKEN}/download`);
-    expect(dl.status).toBe(200);
+  });
+
+  it("a rejected ticket (410 PREVIEW_CONSUMED) does not expire the token", async () => {
+    const a = await app();
+    const res = await request(a)
+      .post(`/api/compartido/${TOKEN}/previsualizar`)
+      .send({ ticket: "00000000-0000-4000-8000-000000000000" });
+    expect(res.status).toBe(410);
+    const expiring = mockDb.run.mock.calls.filter(([sql]) => String(sql).includes("compartido_expira = NOW()"));
+    expect(expiring).toHaveLength(0);
+  });
+
+  it("a failure to expire the token never blocks the PDF", async () => {
+    const a = await app();
+    const { ticket } = (await scan(a)).body;
+    mockDb.run.mockImplementation(async (sql) => {
+      if (String(sql).includes("compartido_expira = NOW()")) throw new Error("expire failed");
+    });
+    const res = await request(a).post(`/api/compartido/${TOKEN}/previsualizar`).send({ ticket });
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("application/pdf");
+  });
+
+  it("an unknown token stays 404 (not QR_USED)", async () => {
+    shareValid = false;
+    tokenKnown = false;
+    const res = await scan(await app());
+    expect(res.status).toBe(404);
+    expect(res.body.codigo).toBeUndefined();
   });
 
   it("a failing access logger does not break the preview", async () => {
