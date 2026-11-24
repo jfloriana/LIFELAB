@@ -1,19 +1,38 @@
-import sgMail from "@sendgrid/mail";
+import nodemailer from "nodemailer";
+import type { Transporter } from "nodemailer";
 
 function escaparHtml(texto: string): string {
   return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// SMTP (Brevo): SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS and EMAIL_FROM (verified sender).
 export function isEmailConfigured(): boolean {
-  return Boolean(process.env.EMAIL_FROM && process.env.SENDGRID_API_KEY);
+  return Boolean(
+    process.env.EMAIL_FROM && process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS
+  );
+}
+
+let transporter: Transporter | null = null;
+
+function getTransporter(): Transporter {
+  if (!transporter) {
+    const port = parseInt(process.env.SMTP_PORT || "587", 10);
+    transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port,
+      secure: port === 465,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
+    });
+  }
+  return transporter;
 }
 
 function getFromEmail(): string | null {
-  const from = process.env.EMAIL_FROM;
-  const apiKey = process.env.SENDGRID_API_KEY;
-  if (!from || !apiKey) return null;
-  sgMail.setApiKey(apiKey);
-  return from;
+  if (!isEmailConfigured()) return null;
+  return process.env.EMAIL_FROM as string;
 }
 
 function buildHtml(title: string, nombre: string, bodyHtml: string, linkUrl: string, linkText: string, footerNote: string): string {
@@ -96,7 +115,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string, no
     "Este enlace expira en <strong>1 hora</strong> por seguridad. Si no solicitaste este cambio, puedes ignorar este correo.");
 
   try {
-    await sgMail.send({
+    await getTransporter().sendMail({
       to: email,
       from,
       subject: "Restablece tu contraseña — LIFELAB",
@@ -137,7 +156,7 @@ export async function sendVerificationEmail(email: string, verifyUrl: string, no
     "Este enlace expira en <strong>24 horas</strong> por seguridad. Si no creaste esta cuenta, ignora este correo.");
 
   try {
-    await sgMail.send({
+    await getTransporter().sendMail({
       to: email,
       from,
       subject: "Verifica tu correo — LIFELAB",
