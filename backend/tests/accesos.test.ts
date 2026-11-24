@@ -86,6 +86,11 @@ describe("GET /api/accesos validation", () => {
     expect(listCalls()).toHaveLength(0);
   });
 
+  it("accepts the previsualizacion_compartida action filter", async () => {
+    const res = await request(app()).get("/api/accesos?accion=previsualizacion_compartida").set("Authorization", bearer(admin));
+    expect(res.status).toBe(200);
+  });
+
   it("rejects limit above 100 and accepts exactly 100", async () => {
     const res = await request(app()).get("/api/accesos?limit=101").set("Authorization", bearer(admin));
     expect(res.status).toBe(400);
@@ -148,7 +153,7 @@ describe("GET /api/accesos/resumen", () => {
     expect(res.status).toBe(200);
     expect(res.body.total_30_dias).toBe(30);
     expect(res.body.usuarios_unicos_30_dias).toBe(5);
-    expect(res.body.ultimos_30_dias).toMatchObject({ descarga: 10, previsualizar: 20, compartir: 0, descarga_compartida: 0 });
+    expect(res.body.ultimos_30_dias).toMatchObject({ descarga: 10, previsualizar: 20, compartir: 0, descarga_compartida: 0, previsualizacion_compartida: 0 });
     expect(res.body.ultimos_7_dias).toMatchObject({ descarga: 4, previsualizar: 6 });
     expect(res.body.mas_consultados).toEqual([
       { resultado_id: 3, titulo: "Hemograma", paciente_nombre: "Juan", paciente_apellido: "Perez", total: 7 },

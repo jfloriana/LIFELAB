@@ -3,7 +3,7 @@ import { query, validationResult } from "express-validator";
 import { authMiddleware } from "../middleware/auth";
 import { getDatabase } from "../config/database";
 
-export const ACCIONES = ["previsualizar", "descarga", "compartir", "descarga_compartida"] as const;
+export const ACCIONES = ["previsualizar", "descarga", "compartir", "descarga_compartida", "previsualizacion_compartida"] as const;
 
 const router = Router();
 router.use(authMiddleware);

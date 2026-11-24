@@ -12,6 +12,7 @@ const accionLabels: Record<string, string> = {
   descarga: "Descarga",
   compartir: "Enlace compartido",
   descarga_compartida: "Descarga por enlace",
+  previsualizacion_compartida: "Previsualización por QR",
 };
 
 const accionColors: Record<string, string> = {
@@ -19,6 +20,7 @@ const accionColors: Record<string, string> = {
   descarga: "bg-green-500/20 text-green-600 dark:text-green-400",
   compartir: "bg-purple-500/20 text-purple-600 dark:text-purple-400",
   descarga_compartida: "bg-orange-500/20 text-orange-600 dark:text-orange-400",
+  previsualizacion_compartida: "bg-teal-500/20 text-teal-600 dark:text-teal-400",
 };
 
 const roleLabels: Record<string, string> = {
@@ -154,7 +156,7 @@ export default function Accesos() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <SummaryCard icon={Activity} label="Accesos (30 días)" value={resumen ? resumen.total_30_dias : null} tone="bg-cyan-500/15 text-cyan-600 dark:text-cyan-400" />
-        <SummaryCard icon={Eye} label="Previsualizaciones" value={resumen ? resumen.ultimos_30_dias.previsualizar : null} tone="bg-blue-500/15 text-blue-600 dark:text-blue-400" />
+        <SummaryCard icon={Eye} label="Previsualizaciones" value={resumen ? resumen.ultimos_30_dias.previsualizar + resumen.ultimos_30_dias.previsualizacion_compartida : null} tone="bg-blue-500/15 text-blue-600 dark:text-blue-400" />
         <SummaryCard icon={Download} label="Descargas" value={resumen ? resumen.ultimos_30_dias.descarga + resumen.ultimos_30_dias.descarga_compartida : null} tone="bg-green-500/15 text-green-600 dark:text-green-400" />
         <SummaryCard icon={Users} label="Usuarios únicos" value={resumen ? resumen.usuarios_unicos_30_dias : null} tone="bg-purple-500/15 text-purple-600 dark:text-purple-400" />
       </div>

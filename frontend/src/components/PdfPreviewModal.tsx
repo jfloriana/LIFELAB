@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X, RefreshCw, ShieldAlert, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { fetchResultadoBlob } from "@/services/api";
+import { fetchResultadoBlob, PreviewConsumedError } from "@/services/api";
 import { cn } from "@/lib/utils";
 import { PdfCanvasViewer } from "@/components/PdfCanvasViewer";
 
@@ -312,13 +312,18 @@ interface PdfPreviewModalProps {
   onClose: () => void;
   resultadoId: number | null;
   titulo?: string;
+  /** Custom loader (e.g. public QR preview). When set it replaces fetchResultadoBlob. */
+  loadBlob?: () => Promise<Blob>;
+  /** Public viewers have no session: this id (e.g. the QR preview ticket) keeps each view traceable. */
+  traceId?: string;
 }
 
-export function PdfPreviewModal({ open, onClose, resultadoId, titulo }: PdfPreviewModalProps) {
+export function PdfPreviewModal({ open, onClose, resultadoId, titulo, loadBlob, traceId }: PdfPreviewModalProps) {
   const { user } = useAuth();
   const [blob, setBlob] = useState<Blob | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [canRetry, setCanRetry] = useState(true);
   const [attempt, setAttempt] = useState(0);
   const isTouch = useIsTouch();
   // Per-session stamp (base36 epoch) embedded in the forensic watermark.
@@ -330,17 +335,22 @@ export function PdfPreviewModal({ open, onClose, resultadoId, titulo }: PdfPrevi
     let cancelled = false;
     setLoading(true);
     setError("");
+    setCanRetry(true);
     setBlob(null);
-    fetchResultadoBlob(resultadoId)
+    (loadBlob ? loadBlob() : fetchResultadoBlob(resultadoId))
       .then((b) => { if (!cancelled) setBlob(b); })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "No se pudo cargar el documento");
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "No se pudo cargar el documento");
+        // A consumed/expired single-use ticket can never succeed on retry.
+        if (err instanceof PreviewConsumedError) setCanRetry(false);
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => {
       cancelled = true;
       setBlob(null);
     };
+    // loadBlob is intentionally not a dependency: callers pass inline closures.
   }, [open, resultadoId, attempt]);
 
   useEffect(() => {
@@ -352,7 +362,7 @@ export function PdfPreviewModal({ open, onClose, resultadoId, titulo }: PdfPrevi
 
   const watermark = user ? `${user.nombre} ${user.apellido} · ${user.email}` : "LIFELAB · confidencial";
   const watermarkLines = useMemo(() => [watermark, viewedAt], [watermark, viewedAt]);
-  const forensicCode = `LL-${user?.id ?? 0}-${resultadoId ?? 0}-${sessionStamp}`;
+  const forensicCode = `LL-${user?.id ?? 0}-${resultadoId ?? 0}-${sessionStamp}${traceId ? `-${traceId.slice(0, 8)}` : ""}`;
 
   if (!open) return null;
 
@@ -378,12 +388,14 @@ export function PdfPreviewModal({ open, onClose, resultadoId, titulo }: PdfPrevi
           {error && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center">
               <p className="text-sm text-red-500">{error}</p>
-              <button
-                onClick={() => setAttempt((n) => n + 1)}
-                className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-white/10 text-sm text-gray-700 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/5"
-              >
-                Reintentar
-              </button>
+              {canRetry && (
+                <button
+                  onClick={() => setAttempt((n) => n + 1)}
+                  className="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-white/10 text-sm text-gray-700 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/5"
+                >
+                  Reintentar
+                </button>
+              )}
             </div>
           )}
           {blob && (

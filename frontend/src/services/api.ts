@@ -154,6 +154,45 @@ export async function fetchResultadoBlob(id: number): Promise<Blob> {
   return res.blob();
 }
 
+export const PREVIEW_CONSUMED_MESSAGE =
+  "Ya previsualizaste este documento. Vuelve a escanear el código QR para verlo de nuevo.";
+
+/** Error raised when a single-use QR preview ticket was already used or has expired. */
+export class PreviewConsumedError extends Error {
+  codigo = "PREVIEW_CONSUMED" as const;
+  status = 410;
+  constructor(message = PREVIEW_CONSUMED_MESSAGE) {
+    super(message);
+    this.name = "PreviewConsumedError";
+  }
+}
+
+export type CompartidoInfo = Record<string, unknown> & { ticket?: string; preview_ttl_seconds?: number };
+
+/** Public metadata of a shared result. Each call counts as one QR "scan" and issues a preview ticket. */
+export async function getCompartido(token: string): Promise<CompartidoInfo> {
+  const res = await fetch(`${API_BASE}/compartido/${encodeURIComponent(token)}`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Resultado no encontrado");
+  return data as CompartidoInfo;
+}
+
+/** Consumes the single-use preview ticket and returns the PDF. Throws PreviewConsumedError on 410. */
+export async function previsualizarCompartido(token: string, ticket: string): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/compartido/${encodeURIComponent(token)}/previsualizar`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticket }),
+  });
+  if (!res.ok) {
+    let data: { error?: string; codigo?: string } = {};
+    try { data = await res.json(); } catch { /* non-JSON error body */ }
+    if (res.status === 410 || data.codigo === "PREVIEW_CONSUMED") throw new PreviewConsumedError();
+    throw new Error(data.error || "No se pudo cargar el documento");
+  }
+  return res.blob();
+}
+
 export interface CompartirResponse {
   mensaje: string;
   token: string;
@@ -236,7 +275,7 @@ export async function updateResena(id: number, data: Record<string, unknown>) {
 
 
 
-export type AccesoAccion = "previsualizar" | "descarga" | "compartir" | "descarga_compartida";
+export type AccesoAccion = "previsualizar" | "descarga" | "compartir" | "descarga_compartida" | "previsualizacion_compartida";
 
 export interface AccesoItem {
   id: number;
