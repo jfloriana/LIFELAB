@@ -106,15 +106,22 @@ export default function VerifyEmail() {
                     Haz clic en el enlace para activar tu cuenta.
                   </p>
                 </div>
-                <div className="w-full bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-500 shrink-0 mt-0.5">
-                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                  </svg>
-                  <div>
-                    <p className="text-sm font-medium text-amber-600 dark:text-amber-400">¿No recibiste el correo?</p>
-                    <p className="text-xs text-amber-500/70 dark:text-amber-400/70 mt-0.5">Revisa tu bandeja de spam o correo no deseado.</p>
+                <div role="alert" className="w-full rounded-2xl border-2 border-amber-500 bg-amber-100 dark:bg-amber-500/15 p-4 text-left shadow-md shadow-amber-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600 dark:text-amber-400 shrink-0">
+                      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                      <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    <p className="text-lg font-extrabold uppercase tracking-wide text-amber-900 dark:text-amber-300">Importante: revisa tu carpeta de spam</p>
                   </div>
+                  <p className="text-base font-medium text-amber-900 dark:text-amber-100 leading-relaxed">
+                    El correo puede llegar a <strong>Spam</strong> o <strong>Correo no deseado</strong>. Si lo encuentras ahí:
+                  </p>
+                  <ol className="mt-2 space-y-1 text-base text-amber-900 dark:text-amber-100 list-decimal list-inside">
+                    <li>Ábrelo y pulsa <strong>"No es spam"</strong>.</li>
+                    <li>Haz clic en el botón <strong>Verificar correo</strong>.</li>
+                  </ol>
+                  <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">¿No llegó en unos minutos? Usa "Reenviar mensaje".</p>
                 </div>
                   {verifyUrl && (
                   <a href={verifyUrl}
