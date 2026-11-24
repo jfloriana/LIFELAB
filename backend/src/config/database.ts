@@ -180,6 +180,13 @@ export async function createDatabase() {
     await queryWithRetry("ALTER TABLE resultados ADD COLUMN compartido_expira TIMESTAMP");
   }
 
+  // One scan per share token: set atomically by the first GET of the public page (additive).
+  try {
+    await queryWithRetry("SELECT compartido_escaneado_at FROM resultados LIMIT 1");
+  } catch {
+    await queryWithRetry("ALTER TABLE resultados ADD COLUMN compartido_escaneado_at TIMESTAMP");
+  }
+
   // Ensure estado column exists
   try {
     await queryWithRetry("SELECT estado FROM resultados LIMIT 1");
@@ -269,6 +276,12 @@ export async function createDatabase() {
     )
   `);
   await queryWithRetry("CREATE INDEX IF NOT EXISTS idx_compartido_vistas_ticket ON compartido_vistas (ticket)");
+  // A scan session allows one preview (used_at) and one download (descarga_used_at).
+  try {
+    await queryWithRetry("SELECT descarga_used_at FROM compartido_vistas LIMIT 1");
+  } catch {
+    await queryWithRetry("ALTER TABLE compartido_vistas ADD COLUMN descarga_used_at TIMESTAMP");
+  }
 
   const { rows: existing } = await queryWithRetry("SELECT COUNT(*) as cnt FROM users");
   if (Number(existing[0]?.cnt) === 0) {

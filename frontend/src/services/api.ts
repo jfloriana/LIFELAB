@@ -181,7 +181,7 @@ export class QrUsedError extends Error {
 
 export type CompartidoInfo = Record<string, unknown> & { ticket?: string; preview_ttl_seconds?: number };
 
-/** Public metadata of a shared result. Each call counts as one QR "scan" and issues a preview ticket. */
+/** Public metadata of a shared result. The first call IS the one and only QR scan: it opens a session ticket. */
 export async function getCompartido(token: string): Promise<CompartidoInfo> {
   const res = await fetch(`${API_BASE}/compartido/${encodeURIComponent(token)}`);
   const data = await res.json().catch(() => ({}));
@@ -190,6 +190,23 @@ export async function getCompartido(token: string): Promise<CompartidoInfo> {
     throw new Error(data?.error || "Resultado no encontrado");
   }
   return data as CompartidoInfo;
+}
+
+/**
+ * Consumes the download slot of the scan session and returns the PDF. The ticket goes in a header
+ * (never in the URL). Throws QrUsedError on 410.
+ */
+export async function descargarCompartido(token: string, ticket: string): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/compartido/${encodeURIComponent(token)}/download`, {
+    headers: { "X-Compartido-Ticket": ticket },
+  });
+  if (!res.ok) {
+    let data: { error?: string; codigo?: string } = {};
+    try { data = await res.json(); } catch { /* non-JSON error body */ }
+    if (res.status === 410) throw new QrUsedError(data.error || QR_USED_MESSAGE);
+    throw new Error(data.error || "No se pudo descargar el documento");
+  }
+  return res.blob();
 }
 
 /** Consumes the single-use preview ticket and returns the PDF. Throws PreviewConsumedError on 410. */

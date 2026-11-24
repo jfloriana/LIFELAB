@@ -335,7 +335,7 @@ router.post("/:id/compartir", validateId(), async (req, res) => {
   // Always generate a new token (expire old one if exists)
   const token = crypto.randomUUID();
   await db.run(
-    "UPDATE resultados SET compartido_token = ?, compartido_expira = NOW() + INTERVAL '7 days' WHERE id = ?",
+    "UPDATE resultados SET compartido_token = ?, compartido_expira = NOW() + INTERVAL '7 days', compartido_escaneado_at = NULL WHERE id = ?",
     [token, req.params!.id]
   );
   const frontendUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get("host")}`;
@@ -351,7 +351,7 @@ router.get("/:id/compartir/estado", validateId(), async (req, res) => {
   const db = getDatabase();
   const result = await db.exec(
     `SELECT id, paciente_id,
-            (compartido_token IS NOT NULL AND (compartido_expira IS NULL OR compartido_expira > NOW())) AS activo
+            (compartido_token IS NOT NULL AND (compartido_expira IS NULL OR compartido_expira > NOW()) AND compartido_escaneado_at IS NULL) AS activo
      FROM resultados WHERE id = ?`,
     [req.params!.id]
   );

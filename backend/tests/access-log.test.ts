@@ -72,18 +72,23 @@ describe("access logging", () => {
   });
 
   it("logs 'descarga_compartida' on the public shared download and never the token", async () => {
-    onExec((sql) =>
-      sql.includes("FROM resultados WHERE compartido_token")
-        ? table(["id", "archivo_path", "archivo_nombre", "archivo_data"], [3, "/nope", "r.pdf", Buffer.from("%PDF-1.4")])
-        : undefined
-    );
-    const res = await request(buildApp("/api/compartido", compartidoRouter)).get("/api/compartido/secret-token-123/download");
+    onExec((sql) => {
+      if (sql.includes("UPDATE compartido_vistas")) return table(["resultado_id"], [3]);
+      if (sql.includes("FROM resultados WHERE id")) {
+        return table(["id", "archivo_path", "archivo_nombre", "archivo_data"], [3, "/nope", "r.pdf", Buffer.from("%PDF-1.4")]);
+      }
+      return undefined;
+    });
+    const res = await request(buildApp("/api/compartido", compartidoRouter))
+      .get("/api/compartido/secret-token-123/download")
+      .set("X-Compartido-Ticket", "11111111-1111-4111-8111-111111111111");
     expect(res.status).toBe(200);
     await vi.waitFor(() => expect(insertCalls()).toHaveLength(1));
     const params = insertCalls()[0][1] as unknown[];
     expect(params[0]).toBe(3);
     expect(params[3]).toBe("descarga_compartida");
     expect(JSON.stringify(params)).not.toContain("secret-token-123");
+    expect(JSON.stringify(params)).not.toContain("11111111-1111");
   });
 
   it("does not log when access is denied", async () => {
