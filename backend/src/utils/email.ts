@@ -4,6 +4,10 @@ function escaparHtml(texto: string): string {
   return texto.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+export function isEmailConfigured(): boolean {
+  return Boolean(process.env.EMAIL_FROM && process.env.SENDGRID_API_KEY);
+}
+
 function getFromEmail(): string | null {
   const from = process.env.EMAIL_FROM;
   const apiKey = process.env.SENDGRID_API_KEY;

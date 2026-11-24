@@ -140,6 +140,12 @@ export async function createDatabase() {
     )
   `);
 
+  try {
+    await queryWithRetry("SELECT edad FROM citas LIMIT 1");
+  } catch {
+    await queryWithRetry("ALTER TABLE citas ADD COLUMN edad INTEGER");
+  }
+
   await queryWithRetry(`
     CREATE TABLE IF NOT EXISTS analisis (
       id SERIAL PRIMARY KEY,
