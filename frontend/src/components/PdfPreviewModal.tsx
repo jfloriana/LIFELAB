@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X, RefreshCw, ShieldAlert } from "lucide-react";
+import { X, RefreshCw, ShieldAlert, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchResultadoBlob } from "@/services/api";
 import { cn } from "@/lib/utils";
@@ -98,13 +98,37 @@ export function useCaptureShield(active: boolean) {
   return active && (focusLost || keyHold || printing);
 }
 
-function buildWatermark(text: string) {
-  const safe = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function escapeXml(text: string) {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/** Dense, slightly rotated tile: viewer identity + timestamp, repeated twice per tile. */
+function buildWatermark(text: string, stamp: string) {
+  const l1 = escapeXml(text);
+  const l2 = escapeXml(stamp);
+  const w = Math.max(320, Math.round(Math.max(l1.length, l2.length) * 7.6) + 60);
+  const h = 150;
+  const t = (y: number, label: string) =>
+    `<text x="20" y="${y}" font-family="sans-serif" font-size="13" font-weight="600" ` +
+    `fill="#808080" fill-opacity="0.3">${label}</text>`;
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="340" height="180">` +
-    `<text x="20" y="110" transform="rotate(-25 170 90)" font-family="sans-serif" font-size="14" ` +
-    `fill="#808080" fill-opacity="0.22">${safe}</text></svg>`;
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">` +
+    `<g transform="rotate(-20 ${w / 2} ${h / 2})">${t(60, l1)}${t(80, l2)}${t(135, l1)}${t(155, l2)}</g></svg>`;
   return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
+}
+
+/** Evaluated once at mount so tests can override window.matchMedia beforehand. */
+function detectTouch() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  return (
+    window.matchMedia("(pointer: coarse)").matches ||
+    (navigator.maxTouchPoints > 0 && !window.matchMedia("(pointer: fine)").matches)
+  );
+}
+
+function useIsTouch() {
+  const [touch] = useState(detectTouch);
+  return touch;
 }
 
 interface CaptureShieldProps {
@@ -113,17 +137,48 @@ interface CaptureShieldProps {
   watermark?: string;
   className?: string;
   active?: boolean;
+  /** Opt-in: on touch devices keep the content covered unless a button is held. */
+  holdToView?: boolean;
 }
+
+const HOLD_LABEL = "Mantén presionado para ver";
 
 /**
  * Wraps sensitive content: disables selection / copy / context menu / drag,
  * overlays a repeating watermark and blacks out the whole screen when a capture
- * attempt is detected. Best-effort only, see useCaptureShield.
+ * attempt is detected. With holdToView, touch devices only see the content while
+ * a button is pressed. Best-effort only, see useCaptureShield.
  */
-export function CaptureShield({ children, watermark, className, active = true }: CaptureShieldProps) {
+export function CaptureShield({ children, watermark, className, active = true, holdToView = false }: CaptureShieldProps) {
   const blocked = useCaptureShield(active);
-  const bg = useMemo(() => (watermark ? buildWatermark(watermark) : undefined), [watermark]);
+  const isTouch = useIsTouch();
+  const hold = holdToView && active && isTouch;
+  const [held, setHeld] = useState(false);
+  const [stamp] = useState(() => new Date().toLocaleString("es"));
+  const bg = useMemo(() => (watermark ? buildWatermark(watermark, stamp) : undefined), [watermark, stamp]);
   const stop = (e: React.SyntheticEvent) => { if (active) e.preventDefault(); };
+
+  useEffect(() => {
+    if (!hold) return;
+    const release = () => setHeld(false);
+    const onVisibility = () => { if (document.visibilityState === "hidden") setHeld(false); };
+    window.addEventListener("blur", release);
+    window.addEventListener("contextmenu", release);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("blur", release);
+      window.removeEventListener("contextmenu", release);
+      document.removeEventListener("visibilitychange", onVisibility);
+      setHeld(false);
+    };
+  }, [hold]);
+
+  const visible = !hold || (held && !blocked);
+  const press = (e: React.PointerEvent<HTMLButtonElement>) => {
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
+    setHeld(true);
+  };
+  const release = () => setHeld(false);
 
   return (
     <div
@@ -139,10 +194,38 @@ export function CaptureShield({ children, watermark, className, active = true }:
       {bg && (
         <div
           aria-hidden
-          className="absolute inset-0 pointer-events-none z-10"
+          className="absolute inset-0 pointer-events-none z-30"
           style={{ backgroundImage: bg, backgroundRepeat: "repeat" }}
         />
       )}
+      {hold && !visible && (
+        <div className="capture-shield-cover absolute inset-0 z-40 flex flex-col items-center justify-center gap-2 rounded-[inherit] bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-white/50 pointer-events-auto">
+          <Lock size={28} aria-hidden />
+          <span className="text-sm font-medium">{HOLD_LABEL}</span>
+        </div>
+      )}
+      {hold &&
+        createPortal(
+          <button
+            type="button"
+            aria-label={HOLD_LABEL}
+            aria-pressed={held}
+            className="capture-hold-button fixed bottom-0 inset-x-0 z-[9000] flex items-center justify-center gap-2 h-20 pb-[env(safe-area-inset-bottom)] bg-blue-600 active:bg-blue-700 text-white text-base font-semibold select-none"
+            style={{ touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
+            onPointerDown={press}
+            onPointerUp={release}
+            onPointerCancel={release}
+            onPointerLeave={release}
+            onLostPointerCapture={release}
+            onTouchEnd={release}
+            onTouchCancel={release}
+            onContextMenu={(e) => e.preventDefault()}
+            onDragStart={(e) => e.preventDefault()}
+          >
+            <Lock size={20} aria-hidden /> {HOLD_LABEL}
+          </button>,
+          document.body
+        )}
       {blocked &&
         createPortal(
           <div
@@ -172,6 +255,7 @@ export function PdfPreviewModal({ open, onClose, resultadoId, titulo }: PdfPrevi
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const isTouch = useIsTouch();
 
   useEffect(() => {
     if (!open || resultadoId === null) return;
@@ -209,7 +293,7 @@ export function PdfPreviewModal({ open, onClose, resultadoId, titulo }: PdfPrevi
   const watermark = user ? `${user.nombre} ${user.apellido} · ${user.email}` : "LIFELAB · confidencial";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-6">
+    <div className={cn("fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-6", isTouch && "pb-24")}>
       <div className="flex flex-col w-full max-w-5xl h-full rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900 shadow-xl overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-gray-200 dark:border-white/10">
           <h2 className="text-base font-semibold text-gray-900 dark:text-white truncate">
@@ -220,7 +304,7 @@ export function PdfPreviewModal({ open, onClose, resultadoId, titulo }: PdfPrevi
           </button>
         </div>
 
-        <CaptureShield watermark={watermark} className="flex-1 min-h-0 bg-gray-100 dark:bg-black/40">
+        <CaptureShield holdToView watermark={watermark} className="flex-1 min-h-0 bg-gray-100 dark:bg-black/40">
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center gap-2 text-gray-500 dark:text-white/40">
               <RefreshCw size={18} className="animate-spin" />

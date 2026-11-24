@@ -126,3 +126,20 @@ h1, h2, h3, h4, h5, h6 {
     display: none !important;
   }
 }
+
+/* Hold-to-view (touch): never allow selection/callout on the cover or the hold button. */
+.capture-hold-button,
+.capture-shield-cover {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.capture-hold-button {
+  touch-action: none;
+}
+@media print {
+  .capture-hold-button {
+    display: none !important;
+  }
+}
