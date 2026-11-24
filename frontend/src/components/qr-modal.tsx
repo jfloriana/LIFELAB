@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Download, RefreshCw } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import { CaptureShield } from "@/components/PdfPreviewModal";
 import { compartirResultado, type CompartirResponse } from "@/services/api";
 
@@ -12,6 +13,7 @@ interface QRModalProps {
 }
 
 export function QRModal({ open, onClose, resultadoId }: QRModalProps) {
+  const { user } = useAuth();
   const [data, setData] = useState<CompartirResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -69,7 +71,7 @@ export function QRModal({ open, onClose, resultadoId }: QRModalProps) {
         {error && <p className="text-danger text-sm">{error}</p>}
         {data && (
           <>
-            <CaptureShield watermark="LIFELAB · confidencial" className="flex flex-col items-center gap-4">
+            <CaptureShield holdToView watermark={user ? `${user.nombre} ${user.apellido} · ${user.email}` : "LIFELAB · confidencial"} className="flex flex-col items-center gap-4">
               <div className="bg-surface rounded-xl p-4">
                 <canvas ref={canvasRef} className="rounded-lg" />
               </div>
