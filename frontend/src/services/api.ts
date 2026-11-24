@@ -142,7 +142,7 @@ export async function getResultados(pacienteId?: number) {
 }
 
 export async function fetchResultadoBlob(id: number): Promise<Blob> {
-  const res = await fetch(`${API_BASE}/resultados/download/${id}`, { credentials: "include" });
+  const res = await fetch(`${API_BASE}/resultados/download/${id}?accion=previsualizar`, { credentials: "include" });
   if (!res.ok) {
     let msg = "No se pudo cargar el documento";
     try {

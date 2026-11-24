@@ -238,36 +238,40 @@ export async function createDatabase() {
     )
   `);
 
+  await queryWithRetry(`
+    CREATE TABLE IF NOT EXISTS resultado_accesos (
+      id SERIAL PRIMARY KEY,
+      resultado_id INTEGER NOT NULL,
+      user_id INTEGER,
+      role TEXT,
+      accion TEXT NOT NULL,
+      ip TEXT,
+      user_agent TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `);
+  await queryWithRetry("CREATE INDEX IF NOT EXISTS idx_resultado_accesos_resultado ON resultado_accesos (resultado_id)");
+
   const { rows: existing } = await queryWithRetry("SELECT COUNT(*) as cnt FROM users");
   if (Number(existing[0]?.cnt) === 0) {
-    const users = [
-      { nombre: "Admin", apellido: "Principal", email: "admin@clinica.com", password: bcrypt.hashSync("Admin@2025Lifelab", 10), role: "admin" },
-      { nombre: "Ana", apellido: "López", email: "bioanalista@clinica.com", password: bcrypt.hashSync("Bio@2025Lifelab", 10), role: "bioanalista" },
-      { nombre: "Rosa", apellido: "Martínez", email: "recepcionista@clinica.com", password: bcrypt.hashSync("Recepc@2025Lifelab", 10), role: "recepcionista" },
-      { nombre: "María", apellido: "García", email: "paciente@clinica.com", password: bcrypt.hashSync("Paciente@2025Lifelab", 10), role: "paciente" },
-    ];
-
-    for (const u of users) {
-      const { rows: exist } = await queryWithRetry("SELECT id FROM users WHERE email = $1", [u.email]);
-      if (!exist.length) {
-        const { rows: newUser } = await queryWithRetry(
-          "INSERT INTO users (nombre, apellido, email, password, role, email_verified) VALUES ($1, $2, $3, $4, $5, TRUE) RETURNING id",
-          [u.nombre, u.apellido, u.email, u.password, u.role]
-        );
-        if (u.role === "paciente") {
-          await queryWithRetry("INSERT INTO pacientes (user_id) VALUES ($1) ON CONFLICT DO NOTHING", [newUser[0].id]);
-        }
-      }
+    // No credentials live in source: the first admin is created only from env vars.
+    const seedEmail = process.env.SEED_ADMIN_EMAIL;
+    const seedPassword = process.env.SEED_ADMIN_PASSWORD;
+    if (seedEmail && seedPassword) {
+      await queryWithRetry(
+        "INSERT INTO users (nombre, apellido, email, password, role, email_verified) VALUES ($1, $2, $3, $4, $5, TRUE)",
+        ["Admin", "Principal", seedEmail, bcrypt.hashSync(seedPassword, 10), "admin"]
+      );
+      console.log("Usuario administrador inicial creado desde SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD");
+    } else {
+      console.log("No hay usuarios: define SEED_ADMIN_EMAIL y SEED_ADMIN_PASSWORD y reinicia para crear el primer administrador.");
     }
 
-    await queryWithRetry(
-      "INSERT INTO pacientes (user_id) SELECT id FROM users WHERE email = 'paciente@clinica.com' AND NOT EXISTS (SELECT 1 FROM pacientes WHERE user_id = users.id)"
-    );
-
     const { rows: reviewCount } = await queryWithRetry("SELECT COUNT(*) as cnt FROM resenas");
-    if (Number(reviewCount[0]?.cnt) === 0) {
-      const { rows: pacUser } = await queryWithRetry("SELECT id FROM users WHERE email = 'paciente@clinica.com'");
-      const pacUserId = pacUser[0]?.id || 4;
+    // resenas.user_id is a required FK: seed the reviews only when a user exists.
+    const { rows: firstUser } = await queryWithRetry("SELECT id FROM users ORDER BY id ASC LIMIT 1");
+    if (Number(reviewCount[0]?.cnt) === 0 && firstUser.length) {
+      const pacUserId = firstUser[0].id;
       const reviews = [
         { nombre: "María García", texto: "La atención es excelente...", estrellas: 5 },
         { nombre: "Carlos Mendoza", texto: "El sistema de agenda online me ahorra mucho tiempo...", estrellas: 5 },

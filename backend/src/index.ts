@@ -15,6 +15,7 @@ import reportesRoutes from "./routes/reportes";
 import analisisRoutes from "./routes/analisis";
 import resenasRoutes from "./routes/resenas";
 import compartidoRoutes from "./routes/compartido";
+import { isEmailConfigured } from "./utils/email";
 import type { Request, Response, NextFunction } from "express";
 
 const app = express();
@@ -30,7 +31,7 @@ if (FRONTEND_URL !== "*" && !/^https?:\/\//.test(FRONTEND_URL)) {
 }
 
 console.log(`📡 FRONTEND_URL: ${FRONTEND_URL}`);
-console.log(`📧 SendGrid ${process.env.SENDGRID_API_KEY ? "configurado" : "NO configurado"}`);
+console.log(`📧 Email SMTP ${isEmailConfigured() ? "configurado" : "NO configurado"}`);
 
 app.use(helmet({
   contentSecurityPolicy: {

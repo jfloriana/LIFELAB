@@ -51,7 +51,12 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
             return;
           }
         }
-      } catch { /* si la BD falla, permitimos el paso por tolerancia */ }
+      } catch (err) {
+        // Fail closed: if the session cannot be verified, do not let the request through.
+        console.error("No se pudo verificar la sesión (BD no disponible):", (err as Error)?.message);
+        res.status(503).json({ error: "Servicio no disponible, intenta de nuevo" });
+        return;
+      }
     }
     req.user = decoded;
     next();
