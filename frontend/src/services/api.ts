@@ -141,6 +141,19 @@ export async function getResultados(pacienteId?: number) {
   return request<Record<string, unknown>[]>(`/resultados${params}`);
 }
 
+export async function fetchResultadoBlob(id: number): Promise<Blob> {
+  const res = await fetch(`${API_BASE}/resultados/download/${id}`, { credentials: "include" });
+  if (!res.ok) {
+    let msg = "No se pudo cargar el documento";
+    try {
+      const data = await res.json();
+      if (data?.error) msg = data.error;
+    } catch { /* non-JSON error body */ }
+    throw new Error(msg);
+  }
+  return res.blob();
+}
+
 export interface CompartirResponse {
   mensaje: string;
   token: string;

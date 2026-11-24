@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { Upload, Clock, User, FlaskConical, CheckCircle2, Circle, Loader, Download, QrCode, ChevronDown, ChevronUp, X, Check } from "lucide-react";
+import { Upload, Clock, User, FlaskConical, CheckCircle2, Circle, Loader, Download, QrCode, Eye, ChevronDown, ChevronUp, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { getCitas, getResultados, aprobarResultado, rechazarResultado, uploadResultado } from "@/services/api";
 import { QRModal } from "@/components/qr-modal";
+import { PdfPreviewModal } from "@/components/PdfPreviewModal";
 import { useToast } from "@/components/ui/use-toast";
 
 const estadoColors: Record<string, string> = {
@@ -20,6 +21,7 @@ export default function Resultados() {
   const [resultados, setResultados] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [qrId, setQrId] = useState<number | null>(null);
+  const [previewId, setPreviewId] = useState<number | null>(null);
   const [expandedCitas, setExpandedCitas] = useState<Set<number>>(new Set());
 
   const toggleExpand = (id: number) => {
@@ -228,6 +230,9 @@ export default function Resultados() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => setPreviewId(r.id as number)} className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-white/60 dark:hover:bg-white/10 transition-all" title="Previsualizar">
+                        <Eye size={16} />
+                      </button>
                       <button onClick={() => window.open(`/api/resultados/download/${r.id}`, "_blank")} className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10 transition-all" title="Descargar PDF">
                         <Download size={16} />
                       </button>
@@ -290,6 +295,9 @@ export default function Resultados() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => setPreviewId(r.id as number)} className="p-1.5 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-white/60 dark:hover:bg-white/10 transition-all" title="Previsualizar">
+                        <Eye size={16} />
+                      </button>
                       <button onClick={() => window.open(`/api/resultados/download/${r.id}`, "_blank")} className="p-1.5 rounded-lg text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-500/10 transition-all" title="Descargar PDF">
                         <Download size={16} />
                       </button>
@@ -323,6 +331,8 @@ export default function Resultados() {
             </div>
           )
         )}
+
+        <PdfPreviewModal open={previewId !== null} onClose={() => setPreviewId(null)} resultadoId={previewId} />
       </div>
     );
   }
@@ -427,6 +437,9 @@ export default function Resultados() {
                         })}
                         {completadosCount === total && resultado && (
                           <div className="flex items-center gap-1 pt-1">
+                            <button onClick={() => setPreviewId(resultado.id as number)} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-medium text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 dark:text-white/50 transition-all" title="Previsualizar">
+                              <Eye size={10} /> Previsualizar
+                            </button>
                             <button onClick={() => window.open(`/api/resultados/download/${resultado.id}`, "_blank")} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-medium text-green-600 hover:bg-green-50 dark:hover:bg-green-500/10 dark:text-green-400 transition-all" title="Descargar PDF">
                               <Download size={10} /> PDF
                             </button>
@@ -449,6 +462,7 @@ export default function Resultados() {
         </div>
       )}
 
+      <PdfPreviewModal open={previewId !== null} onClose={() => setPreviewId(null)} resultadoId={previewId} />
       <QRModal open={qrId !== null} onClose={() => setQrId(null)} resultadoId={qrId || 0} />
     </div>
   );
