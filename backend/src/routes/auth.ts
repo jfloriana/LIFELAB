@@ -8,7 +8,7 @@ import { generateToken, authMiddleware } from "../middleware/auth";
 import { getDatabase } from "../config/database";
 import type { LoginBody } from "../types";
 import type { Response } from "express";
-import { sendPasswordResetEmail, sendVerificationEmail } from "../utils/email";
+import { sendPasswordResetEmail, sendVerificationEmail, isEmailConfigured } from "../utils/email";
 
 const router = Router();
 
@@ -205,9 +205,11 @@ router.post("/register", loginLimiter,
     console.error("Error enviando email de verificación:", err);
   }
 
+  // Solo exponer el enlace cuando no hay email configurado (fallback sin correo);
+  // si el correo funciona, el enlace llega únicamente por email.
   res.status(201).json({
     mensaje: "Cuenta creada. Revisa tu correo para verificar tu cuenta.",
-    verifyUrl,
+    ...(isEmailConfigured() ? {} : { verifyUrl }),
   });
 });
 

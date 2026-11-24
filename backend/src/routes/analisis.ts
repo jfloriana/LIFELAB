@@ -175,6 +175,21 @@ router.put("/:id/estado", validateId(), async (req, res) => {
     return;
   }
   const db = getDatabase();
+
+  if (req.user!.role === "bioanalista") {
+    const own = await db.exec(
+      "SELECT c.medico FROM analisis a JOIN citas c ON c.id = a.cita_id WHERE a.id = ?",
+      [req.params!.id]
+    );
+    if (!own.length || !own[0].values.length) {
+      res.status(404).json({ error: "Análisis no encontrado" }); return;
+    }
+    const bioName = `${req.user!.nombre} ${req.user!.apellido}`;
+    if (own[0].values[0][0] !== bioName) {
+      res.status(403).json({ error: "Solo puedes modificar análisis de tus citas asignadas" }); return;
+    }
+  }
+
   await db.run("UPDATE analisis SET estado = ? WHERE id = ?", [estado, req.params!.id]);
   res.json({ mensaje: "Estado actualizado" });
 });
