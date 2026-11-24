@@ -2,6 +2,7 @@ import { Router } from "express";
 import fs from "fs";
 import rateLimit from "express-rate-limit";
 import { getDatabase } from "../config/database";
+import { logAcceso } from "./resultados";
 
 const router = Router();
 
@@ -44,7 +45,7 @@ router.get("/:token", compartidoLimiter, async (req, res) => {
 router.get("/:token/download", compartidoLimiter, async (req, res) => {
   const db = getDatabase();
   const result = await db.exec(
-    "SELECT archivo_path, archivo_nombre, archivo_data FROM resultados WHERE compartido_token = ? AND (compartido_expira IS NULL OR compartido_expira > NOW())",
+    "SELECT id, archivo_path, archivo_nombre, archivo_data FROM resultados WHERE compartido_token = ? AND (compartido_expira IS NULL OR compartido_expira > NOW())",
     [req.params.token as string]
   );
   if (!result.length || !result[0].values.length) {
@@ -60,6 +61,7 @@ router.get("/:token/download", compartidoLimiter, async (req, res) => {
 
   if (r.archivo_data) {
     const buf = r.archivo_data instanceof Buffer ? r.archivo_data : Buffer.from(r.archivo_data as Uint8Array);
+    logAcceso(req, Number(r.id), "descarga_compartida");
     await expireToken(req.params.token as string);
     res.set("Content-Type", "application/pdf");
     res.set("Content-Disposition", `attachment; filename="${fileName}"`);
@@ -73,6 +75,7 @@ router.get("/:token/download", compartidoLimiter, async (req, res) => {
     return;
   }
 
+  logAcceso(req, Number(r.id), "descarga_compartida");
   await expireToken(req.params.token as string);
   res.download(filePath, fileName);
 });

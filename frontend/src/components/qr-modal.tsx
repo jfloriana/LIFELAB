@@ -61,7 +61,8 @@ export function QRModal({ open, onClose, resultadoId }: QRModalProps) {
 
   return (
     <Dialog open={open} onClose={onClose} title="Compartir resultado">
-      <div className="flex flex-col items-center gap-4">
+      {/* Extra bottom padding on touch devices so the fixed hold-to-view bar never overlaps the dialog */}
+      <div className="flex flex-col items-center gap-4 pointer-coarse:pb-24">
         {loading && (
           <div className="flex items-center gap-2 text-text-muted">
             <RefreshCw size={18} className="animate-spin" />

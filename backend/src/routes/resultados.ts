@@ -4,6 +4,7 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { body, param, validationResult } from "express-validator";
+import type { Request } from "express";
 import { authMiddleware } from "../middleware/auth";
 import { getDatabase } from "../config/database";
 
@@ -20,6 +21,24 @@ function isValidPdf(filePath: string): boolean {
     return /^%PDF-1\.\d/.test(buffer.toString("ascii", 0, 8));
   } catch {
     return false;
+  }
+}
+
+// Best-effort access log: never throws and never affects the original request.
+// Fire-and-forget on purpose so a slow or failing DB cannot delay the response.
+export function logAcceso(req: Request, resultadoId: number, accion: string): void {
+  try {
+    const ua = req.get("user-agent");
+    Promise.resolve(
+      getDatabase().run(
+        "INSERT INTO resultado_accesos (resultado_id, user_id, role, accion, ip, user_agent) VALUES (?, ?, ?, ?, ?, ?)",
+        [resultadoId, req.user?.userId ?? null, req.user?.role ?? null, accion, req.ip ?? null, ua ? ua.slice(0, 300) : null]
+      )
+    ).catch((err: unknown) => {
+      console.error("No se pudo registrar el acceso al resultado:", (err as Error)?.message);
+    });
+  } catch (err) {
+    console.error("No se pudo registrar el acceso al resultado:", (err as Error)?.message);
   }
 }
 
@@ -199,8 +218,11 @@ router.get("/download/:id", validateId(), async (req, res) => {
     res.status(403).json({ error: "No autorizado" }); return;
   }
 
+  const accion = req.query.accion === "previsualizar" ? "previsualizar" : "descarga";
+
   if (r.archivo_data) {
     const buf = r.archivo_data instanceof Buffer ? r.archivo_data : Buffer.from(r.archivo_data as Uint8Array);
+    logAcceso(req, Number(r.id), accion);
     res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
     res.set("Content-Type", "application/pdf");
     res.set("Content-Disposition", `attachment; filename="${r.archivo_nombre}"`);
@@ -211,6 +233,7 @@ router.get("/download/:id", validateId(), async (req, res) => {
     res.status(404).json({ error: "Archivo no encontrado en el servidor" });
     return;
   }
+  logAcceso(req, Number(r.id), accion);
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, private");
   res.download(r.archivo_path as string, r.archivo_nombre as string);
 });
@@ -246,7 +269,38 @@ router.post("/:id/compartir", validateId(), async (req, res) => {
   );
   const frontendUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get("host")}`;
   const shareUrl = `${frontendUrl}/compartido/${token}`;
+  logAcceso(req, Number(r.id), "compartir");
   res.json({ token, url: shareUrl });
+});
+
+router.get("/:id/accesos", validateId(), async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) { res.status(400).json({ error: errors.array()[0].msg }); return; }
+  if (req.user!.role !== "admin") {
+    res.status(403).json({ error: "No autorizado" }); return;
+  }
+  const db = getDatabase();
+  const exists = await db.exec("SELECT id FROM resultados WHERE id = ?", [req.params!.id]);
+  if (!exists.length || !exists[0].values.length) {
+    res.status(404).json({ error: "Resultado no encontrado" }); return;
+  }
+  const result = await db.exec(
+    `SELECT a.id, a.resultado_id, a.user_id, a.role, a.accion, a.ip, a.user_agent, a.created_at,
+            u.nombre, u.apellido, u.email
+     FROM resultado_accesos a
+     LEFT JOIN users u ON u.id = a.user_id
+     WHERE a.resultado_id = ?
+     ORDER BY a.created_at DESC, a.id DESC
+     LIMIT 200`,
+    [req.params!.id]
+  );
+  if (!result.length) { res.json([]); return; }
+  const cols = result[0].columns;
+  res.json(result[0].values.map((row) => {
+    const obj: Record<string, unknown> = {};
+    cols.forEach((col: string, i: number) => { obj[col] = row[i]; });
+    return obj;
+  }));
 });
 
 router.put("/:id",
